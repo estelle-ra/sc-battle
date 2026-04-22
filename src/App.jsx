@@ -168,6 +168,7 @@ export default function App() {
     <div style={{ minHeight:"100vh", background:"#050a12", fontFamily:"'Rajdhani',sans-serif", color:"#e0eaf8", position:"relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
       <style>{`
+        html { font-size: 18px; }
         * { box-sizing:border-box; }
         @keyframes pulse-a  { 0%,100%{box-shadow:0 0 20px #c084fc33} 50%{box-shadow:0 0 40px #c084fc66} }
         @keyframes pulse-b  { 0%,100%{box-shadow:0 0 20px #00d4ff33} 50%{box-shadow:0 0 40px #00d4ff66} }
