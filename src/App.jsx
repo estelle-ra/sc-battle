@@ -168,7 +168,6 @@ export default function App() {
     <div style={{ minHeight:"100vh", background:"#050a12", fontFamily:"'Rajdhani',sans-serif", color:"#e0eaf8", position:"relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
       <style>{`
-        html { font-size: 18px; }
         * { box-sizing:border-box; }
         @keyframes pulse-a  { 0%,100%{box-shadow:0 0 20px #c084fc33} 50%{box-shadow:0 0 40px #c084fc66} }
         @keyframes pulse-b  { 0%,100%{box-shadow:0 0 20px #00d4ff33} 50%{box-shadow:0 0 40px #00d4ff66} }
@@ -238,16 +237,16 @@ export default function App() {
             const payout = side==="a" ? payoutA : payoutB;
             return (
               <div key={side} style={{ flex:1, textAlign:"center", padding:"14px 10px", background:p.bg, border:`1px solid ${p.border}`, borderRadius: idx===0 ? "10px 0 0 10px" : "0 10px 10px 0" }}>
-                <div style={{ fontFamily:"'Orbitron',monospace", fontSize:9, color:p.dim, letterSpacing:3, marginBottom:2 }}>{p.raceIcon} {p.race}</div>
-                <div style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:"clamp(14px,3.5vw,22px)", color:p.color }}>{p.name}</div>
-                <div style={{ fontSize:11, color: idx===0 ? "#8866aa" : "#336688", marginTop:1, marginBottom:8 }}>{p.title}</div>
-                <div style={{ fontFamily:"'Orbitron',monospace", fontSize:20, fontWeight:900, color:p.color }}>{pct}%</div>
-                <div style={{ fontSize:11, color:"#445566", marginBottom:8 }}>{count}명 예측</div>
-                <div style={{ background:"#00000033", border:`1px solid ${p.border}`, borderRadius:6, padding:"7px 8px", fontSize:11 }}>
+                <div style={{ fontFamily:"'Orbitron',monospace", fontSize:11, color:p.dim, letterSpacing:3, marginBottom:2 }}>{p.raceIcon} {p.race}</div>
+                <div style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:"clamp(18px,4vw,28px)", color:p.color }}>{p.name}</div>
+                <div style={{ fontSize:15, color: idx===0 ? "#8866aa" : "#336688", marginTop:1, marginBottom:8 }}>{p.title}</div>
+                <div style={{ fontFamily:"'Orbitron',monospace", fontSize:26, fontWeight:900, color:p.color }}>{pct}%</div>
+                <div style={{ fontSize:14, color:"#445566", marginBottom:8 }}>{count}명 예측</div>
+                <div style={{ background:"#00000033", border:`1px solid ${p.border}`, borderRadius:6, padding:"7px 8px", fontSize:13 }}>
                   <div style={{ color:"#667788", marginBottom:2 }}>{p.name} 승리 시 배당</div>
                   {payout
-                    ? <div className="ticket-glow" style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:15 }}>🎫 × {payout.toFixed(2)}</div>
-                    : <div style={{ color:"#334455", fontSize:11 }}>참여자 대기중</div>
+                    ? <div className="ticket-glow" style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:19 }}>🎫 × {payout.toFixed(2)}</div>
+                    : <div style={{ color:"#334455", fontSize:13 }}>참여자 대기중</div>
                   }
                 </div>
               </div>
@@ -284,7 +283,7 @@ export default function App() {
               background: tab===t.key ? "#0d1e35" : "transparent",
               border: tab===t.key ? "1px solid #c084fc44" : "1px solid transparent",
               color: tab===t.key ? "#c084fc" : "#445566",
-              fontFamily:"'Orbitron',monospace", fontSize:10, letterSpacing:1, transition:"all 0.2s",
+              fontFamily:"'Orbitron',monospace", fontSize:13, letterSpacing:1, transition:"all 0.2s",
             }}>{t.label}</button>
           ))}
         </div>
@@ -297,15 +296,15 @@ export default function App() {
                 <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#c084fc88", letterSpacing:3, marginBottom:20 }}>▶ ENTER YOUR PREDICTION</div>
 
                 <div style={{ marginBottom:14 }}>
-                  <label style={{ fontSize:12, color:"#8899aa", display:"block", marginBottom:6, letterSpacing:1 }}>닉네임 / 이름</label>
+                  <label style={{ fontSize:15, color:"#8899aa", display:"block", marginBottom:6, letterSpacing:1 }}>닉네임 / 이름</label>
                   <input value={formData.nickname} onChange={e => { setFormData(p=>({...p,nickname:e.target.value})); setDupError(false); }}
                     placeholder="홍길동"
-                    style={{ width:"100%", background:"#050a12", border:`1px solid ${dupError ? "#ff4444" : "#c084fc33"}`, color:"#e0eaf8", padding:"10px 14px", borderRadius:6, fontSize:15, fontFamily:"'Rajdhani',sans-serif" }} />
-                  {dupError && <div style={{ color:"#ff4444", fontSize:12, marginTop:4 }}>이미 해당 닉네임으로 참여하셨습니다</div>}
+                    style={{ width:"100%", background:"#050a12", border:`1px solid ${dupError ? "#ff4444" : "#c084fc33"}`, color:"#e0eaf8", padding:"10px 14px", borderRadius:6, fontSize:17, fontFamily:"'Rajdhani',sans-serif" }} />
+                  {dupError && <div style={{ color:"#ff4444", fontSize:14, marginTop:4 }}>이미 해당 닉네임으로 참여하셨습니다</div>}
                 </div>
 
                 <div style={{ marginBottom:20 }}>
-                  <label style={{ fontSize:12, color:"#8899aa", display:"block", marginBottom:10, letterSpacing:1 }}>승리 예측 선택</label>
+                  <label style={{ fontSize:15, color:"#8899aa", display:"block", marginBottom:10, letterSpacing:1 }}>승리 예측 선택</label>
                   <div style={{ display:"flex", gap:10 }}>
                     {["a","b"].map(side => {
                       const p      = PLAYERS[side];
@@ -317,7 +316,7 @@ export default function App() {
                           background: sel ? p.bg : "#050a12",
                           border:`2px solid ${sel ? p.color : "#1a2a3a"}`,
                           color: sel ? p.color : "#445566",
-                          fontFamily:"'Orbitron',monospace", fontSize:12, fontWeight:700,
+                          fontFamily:"'Orbitron',monospace", fontSize:14, fontWeight:700,
                           boxShadow: sel ? `0 0 20px ${p.dim}` : "none",
                         }}>
                           <div>{p.raceIcon} {p.name}</div>
@@ -394,10 +393,10 @@ export default function App() {
                   const isWin  = result===side;
                   return (
                     <div key={side} style={{ flex:1, background: isWin ? "#0a2010" : p.bg, border:`1px solid ${isWin ? "#44ff8833" : p.border}`, borderRadius:8, padding:"10px 12px", textAlign:"center" }}>
-                      <div style={{ fontFamily:"'Orbitron',monospace", fontSize:9, color:p.color, letterSpacing:2, marginBottom:4 }}>{p.name} 예측</div>
-                      <div style={{ fontSize:13, color:"#667788", marginBottom:4 }}>{side==="a" ? countA : countB}명 · {side==="a" ? pctA : pctB}%</div>
-                      {payout && <div className="ticket-glow" style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:14 }}>🎫 × {payout.toFixed(2)}</div>}
-                      {result && <div style={{ fontSize:10, color: isWin ? "#44ff88" : "#ff4444", marginTop:4, letterSpacing:2 }}>{isWin ? "🏆 WIN" : "💀 LOSE"}</div>}
+                      <div style={{ fontFamily:"'Orbitron',monospace", fontSize:12, color:p.color, letterSpacing:2, marginBottom:4 }}>{p.name} 예측</div>
+                      <div style={{ fontSize:15, color:"#667788", marginBottom:4 }}>{side==="a" ? countA : countB}명 · {side==="a" ? pctA : pctB}%</div>
+                      {payout && <div className="ticket-glow" style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:17 }}>🎫 × {payout.toFixed(2)}</div>}
+                      {result && <div style={{ fontSize:13, color: isWin ? "#44ff88" : "#ff4444", marginTop:4, letterSpacing:2 }}>{isWin ? "🏆 WIN" : "💀 LOSE"}</div>}
                     </div>
                   );
                 })}
@@ -421,9 +420,9 @@ export default function App() {
                       border:`1px solid ${isWinner ? "#44ff8822" : isLoser ? "#ff444422" : "#ffffff08"}`,
                       borderRadius:8, padding:"9px 12px", transition:"background 0.2s",
                     }}>
-                      <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#2a3a4a", minWidth:20 }}>{String(i+1).padStart(2,"0")}</div>
+                      <div style={{ fontFamily:"'Orbitron',monospace", fontSize:12, color:"#2a3a4a", minWidth:20 }}>{String(i+1).padStart(2,"0")}</div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:14, fontWeight:600, color: isWinner ? "#44ff88" : isLoser ? "#ff5555" : "#ccd8e8" }}>
+                        <div style={{ fontSize:17, fontWeight:600, color: isWinner ? "#44ff88" : isLoser ? "#ff5555" : "#ccd8e8" }}>
                           {v.nickname}
                           {isWinner && <span style={{ marginLeft:6 }}>🏆</span>}
                           {isLoser  && <span style={{ marginLeft:6 }}>💀</span>}
@@ -431,13 +430,13 @@ export default function App() {
                       </div>
                       <div style={{ textAlign:"right" }}>
                         {isWinner && winnerPayout
-                          ? <span className="ticket-glow" style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:13 }}>🎫 × {winnerPayout.toFixed(2)}</span>
+                          ? <span className="ticket-glow" style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:15 }}>🎫 × {winnerPayout.toFixed(2)}</span>
                           : isLoser
-                          ? <span style={{ color:"#553333", fontFamily:"'Orbitron',monospace", fontSize:11 }}>🎫 × 0</span>
-                          : <span style={{ color:"#334455", fontFamily:"'Orbitron',monospace", fontSize:10 }}>🎫 × ?</span>
+                          ? <span style={{ color:"#553333", fontFamily:"'Orbitron',monospace", fontSize:14 }}>🎫 × 0</span>
+                          : <span style={{ color:"#334455", fontFamily:"'Orbitron',monospace", fontSize:13 }}>🎫 × ?</span>
                         }
                       </div>
-                      <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, fontWeight:700, color:p.color, background:p.bg, border:`1px solid ${p.border}`, borderRadius:5, padding:"4px 8px", letterSpacing:1, whiteSpace:"nowrap" }}>
+                      <div style={{ fontFamily:"'Orbitron',monospace", fontSize:12, fontWeight:700, color:p.color, background:p.bg, border:`1px solid ${p.border}`, borderRadius:5, padding:"4px 8px", letterSpacing:1, whiteSpace:"nowrap" }}>
                         {p.raceIcon} {p.name}
                       </div>
                     </div>
