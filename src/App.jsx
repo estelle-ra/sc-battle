@@ -29,6 +29,8 @@ function calcPayout(total, winnerCount) {
   return Math.round((total / winnerCount) * 100) / 100;
 }
 
+const LS_KEY = "sc-battle-vote";
+
 // Apps Script 호출 헬퍼 (모두 GET 쿼리스트링)
 async function api(params) {
   const qs = new URLSearchParams(params).toString();
@@ -60,9 +62,23 @@ export default function App() {
     try {
       const data = await api({ action: "getAll" });
       if (data.ok) {
+        const serverRound = data.round ?? 1;
         setAllVotes(data.votes || []);
         setResult(data.result || null);
         setApiError(false);
+
+        // localStorage에서 내 투표 복원 — 라운드가 같을 때만
+        const saved = localStorage.getItem(LS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.round === serverRound) {
+            setMyVote(parsed.vote);
+            setStep("done");
+          } else {
+            // 라운드가 다르면 (관리자가 초기화) 로컬도 삭제
+            localStorage.removeItem(LS_KEY);
+          }
+        }
       }
     } catch {
       setApiError(true);
@@ -89,6 +105,9 @@ export default function App() {
         setMyVote(entry);
         setStep("done");
         setTab("board");
+        // 라운드 포함해서 localStorage 저장
+        const currentRound = res.round ?? 1;
+        localStorage.setItem(LS_KEY, JSON.stringify({ vote: entry, round: currentRound }));
         await loadData();
       } else if (res.error === "DUPLICATE") {
         setDupError(true);
@@ -122,6 +141,8 @@ export default function App() {
     setAdminBusy(true);
     try {
       await api({ action: "resetAll", pw: ADMIN_PW });
+      // 관리자 본인 로컬도 초기화
+      localStorage.removeItem(LS_KEY);
       setMyVote(null); setStep("form"); setFormData({ nickname: "", side: null });
       await loadData();
     } catch {}
