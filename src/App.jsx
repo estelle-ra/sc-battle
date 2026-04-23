@@ -84,6 +84,7 @@ export default function App() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [editNickname, setEditNickname]     = useState("");
   const [editRealname, setEditRealname]     = useState("");
+  const [editBet, setEditBet]               = useState(1);
   const [editBusy, setEditBusy]             = useState(false);
   const [editError, setEditError]           = useState("");
 
@@ -230,14 +231,21 @@ export default function App() {
     if (!session || editBusy) return;
     setEditBusy(true); setEditError("");
     try {
-      const res = await api({ action:"updateProfile", nickname:session.nickname, pin:session.pin, newNickname:editNickname.trim()||session.nickname, newRealname:editRealname });
+      const res = await api({
+        action:"updateProfile",
+        nickname:session.nickname, pin:session.pin,
+        newNickname:editNickname.trim()||session.nickname,
+        newRealname:editRealname,
+        newBet:editBet,
+      });
       if (res.ok) {
         const newNick = editNickname.trim() || session.nickname;
         const saved   = JSON.parse(localStorage.getItem(LS_KEY));
         saved.session.nickname = newNick;
         saved.session.realname = editRealname;
+        saved.session.bet      = editBet;
         localStorage.setItem(LS_KEY, JSON.stringify(saved));
-        setSession(s => ({ ...s, nickname:newNick, realname:editRealname }));
+        setSession(s => ({ ...s, nickname:newNick, realname:editRealname, bet:editBet }));
         setEditingProfile(false);
         await loadData();
       } else if (res.error === "DUPLICATE") setEditError("이미 사용 중인 닉네임이에요");
@@ -586,8 +594,8 @@ export default function App() {
                 {!result && (
                   <div style={{ marginTop:16 }}>
                     {!editingProfile ? (
-                      <button onClick={()=>{ setEditingProfile(true); setEditNickname(session.nickname); setEditRealname(session.realname||""); }} style={{ padding:"8px 18px", cursor:"pointer", borderRadius:6, background:"transparent", border:"1px solid #445566", color:"#667788", fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2 }}>
-                        ✏️ 닉네임 / 실명 수정
+                      <button onClick={()=>{ setEditingProfile(true); setEditNickname(session.nickname); setEditRealname(session.realname||""); setEditBet(session.bet||1); }} style={{ padding:"8px 18px", cursor:"pointer", borderRadius:6, background:"transparent", border:"1px solid #445566", color:"#667788", fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2 }}>
+                        ✏️ 닉네임 / 실명 / 티켓 수정
                       </button>
                     ) : (
                       <div style={{ textAlign:"left" }}>
@@ -597,6 +605,23 @@ export default function App() {
                         <Field label="실명 (본인·관리자만)">
                           <input value={editRealname} onChange={e=>setEditRealname(e.target.value)} placeholder="라샛별" style={inputStyle()} />
                         </Field>
+                        <div style={{ marginBottom:14 }}>
+                          <label style={{ fontSize:15, color:"#8899aa", display:"block", marginBottom:8 }}>
+                            베팅 티켓 수 <span style={{ color:"#445566", fontSize:12 }}>최대 10장</span>
+                          </label>
+                          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                            {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                              <button key={n} className="bet-btn" onClick={()=>setEditBet(n)} style={{
+                                width:44, height:44, cursor:"pointer", borderRadius:8,
+                                background: editBet===n ? "linear-gradient(135deg,#ffcc4433,#aa880022)" : "#050a12",
+                                border: `2px solid ${editBet===n ? "#ffcc44" : "#1a2a3a"}`,
+                                color: editBet===n ? "#ffcc44" : "#445566",
+                                fontFamily:"'Orbitron',monospace", fontSize:14, fontWeight:700,
+                              }}>{n}</button>
+                            ))}
+                          </div>
+                          <div style={{ fontSize:12, color:"#556633", marginTop:6 }}>🎫 {editBet}장 선택됨</div>
+                        </div>
                         {editError && <div style={{ color:"#ff4444", fontSize:12, marginBottom:8 }}>{editError}</div>}
                         <div style={{ display:"flex", gap:8 }}>
                           <button onClick={handleUpdateProfile} disabled={editBusy} style={{ ...primaryBtn(editBusy), flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
