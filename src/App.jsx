@@ -174,7 +174,14 @@ export default function App() {
 
   async function handleLogin() {
     const { nickname, pin } = loginData;
-    if (!nickname.trim() || pin.length < 4 || loginBusy) return;
+    if (!nickname.trim() || loginBusy) return;
+    if (pin.length > 0 && pin.length < 3) {
+      setLoginError("PIN은 최소 3자리예요"); return;
+    }
+    if (pin.length === 0) {
+      // PIN 없이 → setNewPin 플로우
+      setLoginStep("setNewPin"); setLoginError(""); return;
+    }
     setLoginBusy(true); setLoginError("");
     try {
       const res = await api({ action:"verifyPin", nickname:nickname.trim(), pin:pin.trim() });
@@ -188,9 +195,7 @@ export default function App() {
         if      (res.error === "WRONG_PIN")  setLoginError("PIN이 틀렸어요");
         else if (res.error === "NOT_FOUND")  setLoginError("해당 닉네임을 찾을 수 없어요");
         else if (res.error === "NO_PIN") {
-          // PIN 없는 기존 참여자 → PIN 설정 단계로
-          setLoginStep("setNewPin");
-          setLoginError("");
+          setLoginStep("setNewPin"); setLoginError("");
         }
         else setLoginError("오류가 발생했어요");
       }
@@ -679,19 +684,15 @@ export default function App() {
                     <Field label="닉네임">
                       <input value={loginData.nickname} onChange={e=>{setLoginData(p=>({...p,nickname:e.target.value}));setLoginError("");}} placeholder="샛별" style={inputStyle(!!loginError)} />
                     </Field>
-                    <Field label="PIN 번호" hint="설정한 적 없으면 비워두세요" error={loginError}>
-                      <input value={loginData.pin} onChange={e=>{setLoginData(p=>({...p,pin:e.target.value.replace(/\D/g,"").slice(0,4)}));setLoginError("");}}
-                        onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="1234 (없으면 비워두기)" maxLength={4} style={inputStyle(!!loginError)} />
+                    <Field label="PIN 번호" hint="없으면 비워두세요" error={loginError}>
+                      <input value={loginData.pin}
+                        onChange={e=>{setLoginData(p=>({...p,pin:e.target.value.replace(/\D/g,"").slice(0,4)}));setLoginError("");}}
+                        onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+                        placeholder="PIN 입력 (없으면 비워두기)" maxLength={4}
+                        style={inputStyle(!!loginError)} />
                     </Field>
                     <button
-                      onClick={() => {
-                        if (loginData.pin.length === 0) {
-                          // PIN 없이 닉네임만 → NO_PIN 플로우 직행
-                          setLoginStep("setNewPin"); setLoginError("");
-                        } else {
-                          handleLogin();
-                        }
-                      }}
+                      onClick={handleLogin}
                       disabled={!loginData.nickname.trim()||loginBusy}
                       style={{ ...primaryBtn(!loginData.nickname.trim()||loginBusy), display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:10 }}>
                       {loginBusy ? <><span className="spinner" />확인 중...</> : "인증 →"}
