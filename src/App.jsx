@@ -526,7 +526,8 @@ export default function App() {
                     ⚠️ <strong style={{ color:"#ffcc44" }}>필수 안내</strong><br/>
                     경기 진행 전 예측 티켓과 같은 수량의<br/>
                     <strong style={{ color:"#ffcc44" }}>크래프톤 카페 쿠폰을 라샛별에게 제출</strong>하셔야 인정됩니다.<br/>
-                    <span style={{ color:"#887722", fontSize:12 }}>이 페이지는 대결을 재미있게 시청하고 응원하기 위한 용도이니<br/>절. 대. 진지하게 임하지 말아 주세요! 😄</span>
+                    <span style={{ color:"#887722", fontSize:12 }}>이 페이지는 대결을 재미있게 시청하고 응원하기 위한 용도이니<br/>절. 대. 진지하게 임하지 말아 주세요! 😄</span><br/>
+                    <span style={{ color:"#665522", fontSize:11 }}>커피 쿠폰은 소수점으로 나눌 수 없어서 정산 시 배당은 임의로 내림 처리될 수 있습니다.</span>
                   </div>
                 </div>
 
@@ -585,7 +586,8 @@ export default function App() {
                     <div style={{ fontSize:12, color:"#ccaa33", lineHeight:1.9 }}>
                       ⚠️ 예측 티켓 <strong style={{ color:"#ffcc44" }}>{session.bet}장</strong>에 해당하는<br/>
                       <strong style={{ color:"#ffcc44" }}>크래프톤 카페 쿠폰을 라샛별에게 제출</strong>해주세요.<br/>
-                      <span style={{ color:"#887722", fontSize:11 }}>절. 대. 진지하게 임하지 말아 주세요! 😄</span>
+                      <span style={{ color:"#887722", fontSize:11 }}>절. 대. 진지하게 임하지 말아 주세요! 😄</span><br/>
+                      <span style={{ color:"#665522", fontSize:11 }}>커피 쿠폰은 소수점으로 나눌 수 없어서 정산 시 배당은 임의로 내림 처리될 수 있습니다.</span>
                     </div>
                   </div>
                 )}
