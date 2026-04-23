@@ -2,7 +2,32 @@ import { useState, useEffect, useCallback } from "react";
 
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBNZ8VRsiEzNzobrJy-zr6vGvIbpF2yhAxCOdsncInAfK3BStjSTYpMlYTXYW0ni72/exec";
 const ADMIN_PW   = "krafton";
-const LS_KEY     = "sc-battle-v5";
+const LS_KEY      = "sc-battle-v5";
+const LS_OLD_KEYS = ["sc-battle-v4", "sc-battle-vote", "sc-voted"]; // 이전 버전 키들
+
+// 구버전 localStorage → 현재 키로 마이그레이션
+function migrateLocalStorage() {
+  if (localStorage.getItem(LS_KEY)) return; // 이미 있으면 스킵
+  for (const oldKey of LS_OLD_KEYS) {
+    const old = localStorage.getItem(oldKey);
+    if (old) {
+      try {
+        const parsed = JSON.parse(old);
+        // 구버전 포맷 통일: { session, round } 형태로 변환
+        if (parsed.vote && parsed.round !== undefined) {
+          // sc-battle-vote 포맷: { vote: {...}, round: N }
+          const sess = { ...parsed.vote, bet: parsed.vote.bet || 1, pin: parsed.vote.pin || "" };
+          localStorage.setItem(LS_KEY, JSON.stringify({ session: sess, round: parsed.round }));
+        } else if (parsed.session && parsed.round !== undefined) {
+          // sc-battle-v4 포맷: { session: {...}, round: N } → 그대로 복사
+          localStorage.setItem(LS_KEY, JSON.stringify(parsed));
+        }
+        localStorage.removeItem(oldKey);
+        break;
+      } catch {}
+    }
+  }
+}
 
 const PLAYERS = {
   a: {
@@ -101,6 +126,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    migrateLocalStorage(); // 구버전 키 마이그레이션
     loadData();
     const t = setInterval(loadData, 15000);
     return () => clearInterval(t);
