@@ -195,6 +195,8 @@ export default function App() {
     }
     setProfileSaving(false);
   }
+
+  function handleAdminLogin() {
     if (adminPw === ADMIN_PW) { setAdminMode(true); setAdminError(""); }
     else setAdminError("비밀번호가 틀렸습니다");
   }
