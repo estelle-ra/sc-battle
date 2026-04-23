@@ -40,13 +40,14 @@ async function api(params) {
 
 export default function App() {
   const [allVotes, setAllVotes]   = useState([]);
+  const [adminVotes, setAdminVotes] = useState([]); // 실명 포함 버전 (관리자용)
   const [result, setResult]       = useState(null);
   const [loading, setLoading]     = useState(true);
   const [apiError, setApiError]   = useState(false);
 
-  const [myVote, setMyVote]       = useState(null);
+  const [myVote, setMyVote]       = useState(null); // { id, nickname, side, realname }
   const [step, setStep]           = useState("form");
-  const [formData, setFormData]   = useState({ nickname: "", side: null });
+  const [formData, setFormData]   = useState({ nickname: "", realname: "", side: null });
   const [submitting, setSubmitting] = useState(false);
   const [dupError, setDupError]   = useState(false);
 
@@ -57,8 +58,13 @@ export default function App() {
   const [adminBusy, setAdminBusy] = useState(false);
 
   const [tab, setTab] = useState("predict");
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [newNickname, setNewNickname] = useState("");
+  const [newRealname, setNewRealname] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (withAdmin = false) => {
     try {
       const data = await api({ action: "getAll" });
       if (data.ok) {
@@ -75,7 +81,6 @@ export default function App() {
             setMyVote(parsed.vote);
             setStep("done");
           } else {
-            // 라운드가 다르면 (관리자가 초기화) 로컬도 삭제
             localStorage.removeItem(LS_KEY);
           }
         }
@@ -86,6 +91,14 @@ export default function App() {
     setLoading(false);
   }, []);
 
+  // 관리자용 실명 포함 데이터 로드
+  const loadAdminData = useCallback(async () => {
+    try {
+      const data = await api({ action: "getAll", pw: ADMIN_PW });
+      if (data.ok) setAdminVotes(data.votes || []);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     loadData();
     // 15초마다 자동 새로고침
@@ -94,18 +107,17 @@ export default function App() {
   }, [loadData]);
 
   async function handleSubmit() {
-    const { nickname, side } = formData;
+    const { nickname, side, realname } = formData;
     if (!nickname.trim() || !side || submitting) return;
     setSubmitting(true);
     setDupError(false);
     try {
-      const res = await api({ action: "vote", nickname: nickname.trim(), side });
+      const res = await api({ action: "vote", nickname: nickname.trim(), side, realname: realname.trim() });
       if (res.ok) {
-        const entry = { id: Date.now(), nickname: nickname.trim(), side };
+        const entry = { id: Date.now(), nickname: nickname.trim(), side, realname: realname.trim() };
         setMyVote(entry);
         setStep("done");
         setTab("board");
-        // 라운드 포함해서 localStorage 저장
         const currentRound = res.round ?? 1;
         localStorage.setItem(LS_KEY, JSON.stringify({ vote: entry, round: currentRound }));
         await loadData();
@@ -141,15 +153,48 @@ export default function App() {
     setAdminBusy(true);
     try {
       await api({ action: "resetAll", pw: ADMIN_PW });
-      // 관리자 본인 로컬도 초기화
       localStorage.removeItem(LS_KEY);
-      setMyVote(null); setStep("form"); setFormData({ nickname: "", side: null });
+      setMyVote(null); setStep("form"); setFormData({ nickname: "", realname: "", side: null });
+      setAdminVotes([]);
       await loadData();
     } catch {}
     setAdminBusy(false);
   }
 
-  function handleAdminLogin() {
+  async function handleUpdateProfile() {
+    if (profileSaving) return;
+    setProfileSaving(true);
+    setProfileError("");
+    try {
+      const res = await api({
+        action: "updateProfile",
+        oldNickname: myVote.nickname,
+        newNickname: newNickname.trim() || myVote.nickname,
+        newRealname: newRealname,
+      });
+      if (res.ok) {
+        const updatedNickname = newNickname.trim() || myVote.nickname;
+        const updatedVote = { ...myVote, nickname: updatedNickname, realname: newRealname };
+        // localStorage 업데이트
+        const saved = localStorage.getItem(LS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          parsed.vote = updatedVote;
+          localStorage.setItem(LS_KEY, JSON.stringify(parsed));
+        }
+        setMyVote(updatedVote);
+        setEditingProfile(false);
+        await loadData();
+      } else if (res.error === "DUPLICATE") {
+        setProfileError("이미 사용 중인 닉네임이에요");
+      } else {
+        setProfileError("수정에 실패했어요. 다시 시도해주세요");
+      }
+    } catch {
+      setProfileError("오류가 발생했어요");
+    }
+    setProfileSaving(false);
+  }
     if (adminPw === ADMIN_PW) { setAdminMode(true); setAdminError(""); }
     else setAdminError("비밀번호가 틀렸습니다");
   }
@@ -298,9 +343,19 @@ export default function App() {
                 <div style={{ marginBottom:14 }}>
                   <label style={{ fontSize:15, color:"#8899aa", display:"block", marginBottom:6, letterSpacing:1 }}>닉네임 / 이름</label>
                   <input value={formData.nickname} onChange={e => { setFormData(p=>({...p,nickname:e.target.value})); setDupError(false); }}
-                    placeholder="홍길동"
+                    placeholder="홍길동 or 샛별"
                     style={{ width:"100%", background:"#050a12", border:`1px solid ${dupError ? "#ff4444" : "#c084fc33"}`, color:"#e0eaf8", padding:"10px 14px", borderRadius:6, fontSize:17, fontFamily:"'Rajdhani',sans-serif" }} />
                   {dupError && <div style={{ color:"#ff4444", fontSize:14, marginTop:4 }}>이미 해당 닉네임으로 참여하셨습니다</div>}
+                </div>
+
+                <div style={{ marginBottom:20 }}>
+                  <label style={{ fontSize:15, color:"#8899aa", display:"block", marginBottom:6, letterSpacing:1 }}>
+                    실명 <span style={{ color:"#445566", fontSize:12 }}>(선택 · 본인과 관리자만 볼 수 있어요)</span>
+                  </label>
+                  <input value={formData.realname} onChange={e => setFormData(p=>({...p,realname:e.target.value}))}
+                    placeholder="라샛별"
+                    style={{ width:"100%", background:"#050a12", border:"1px solid #c084fc22", color:"#e0eaf8", padding:"10px 14px", borderRadius:6, fontSize:17, fontFamily:"'Rajdhani',sans-serif" }} />
+                  <div style={{ fontSize:11, color:"#334455", marginTop:4 }}>나중에 예측완료 화면에서도 추가/수정 가능해요</div>
                 </div>
 
                 <div style={{ marginBottom:20 }}>
@@ -355,6 +410,62 @@ export default function App() {
                   <span style={{ color:PLAYERS[myVote.side].color, fontWeight:700 }}>{myVote.nickname}</span> 님은<br/>
                   <span style={{ color:PLAYERS[myVote.side].color }}>🎫 {PLAYERS[myVote.side].name} 승리</span>를 예측하셨습니다
                 </div>
+
+                {/* 프로필 수정 */}
+                {!result && (
+                  <div style={{ marginTop:16 }}>
+                    {!editingProfile ? (
+                      <div>
+                        {myVote.realname && (
+                          <div style={{ fontSize:13, color:"#667788", marginBottom:8 }}>
+                            실명: <span style={{ color:"#8899aa" }}>{myVote.realname}</span>
+                            <span style={{ color:"#334455", fontSize:11 }}> (본인에게만 보임)</span>
+                          </div>
+                        )}
+                        <button onClick={() => { setEditingProfile(true); setNewNickname(myVote.nickname); setNewRealname(myVote.realname || ""); }} style={{
+                          padding:"8px 18px", cursor:"pointer", borderRadius:6,
+                          background:"transparent", border:"1px solid #445566",
+                          color:"#667788", fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2,
+                        }}>
+                          ✏️ 닉네임 / 실명 수정
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign:"left", marginTop:4 }}>
+                        <div style={{ marginBottom:10 }}>
+                          <div style={{ fontSize:13, color:"#8899aa", marginBottom:5 }}>닉네임 (현황 탭에서 모두에게 공개)</div>
+                          <input value={newNickname} onChange={e => { setNewNickname(e.target.value); setProfileError(""); }}
+                            placeholder={myVote.nickname}
+                            style={{ width:"100%", background:"#050a12", border:`1px solid ${profileError ? "#ff4444" : "#c084fc33"}`, color:"#e0eaf8", padding:"10px 14px", borderRadius:6, fontSize:16, fontFamily:"'Rajdhani',sans-serif" }} />
+                        </div>
+                        <div style={{ marginBottom:10 }}>
+                          <div style={{ fontSize:13, color:"#8899aa", marginBottom:5 }}>실명 <span style={{ color:"#445566", fontSize:11 }}>(본인·관리자만 보임)</span></div>
+                          <input value={newRealname} onChange={e => setNewRealname(e.target.value)}
+                            placeholder="라샛별"
+                            style={{ width:"100%", background:"#050a12", border:"1px solid #c084fc22", color:"#e0eaf8", padding:"10px 14px", borderRadius:6, fontSize:16, fontFamily:"'Rajdhani',sans-serif" }} />
+                        </div>
+                        {profileError && <div style={{ color:"#ff4444", fontSize:12, marginBottom:8 }}>{profileError}</div>}
+                        <div style={{ display:"flex", gap:8 }}>
+                          <button onClick={handleUpdateProfile} disabled={profileSaving} style={{
+                            flex:1, padding:"10px", cursor:"pointer", borderRadius:6,
+                            background:"linear-gradient(135deg,#c084fc22,#8833cc11)",
+                            border:"1px solid #c084fc55", color:"#c084fc",
+                            fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2,
+                            display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                          }}>
+                            {profileSaving ? <><span className="spinner" />저장 중...</> : "저장 →"}
+                          </button>
+                          <button onClick={() => { setEditingProfile(false); setProfileError(""); }} style={{
+                            padding:"10px 16px", cursor:"pointer", borderRadius:6,
+                            background:"transparent", border:"1px solid #334455",
+                            color:"#556677", fontSize:12, fontFamily:"'Orbitron',monospace",
+                          }}>취소</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {result ? (
                   <div style={{ marginTop:16, padding:"14px", borderRadius:8, background: myVote.side===result ? "#0a2010" : "#1a0808", border:`1px solid ${myVote.side===result ? "#44ff8844":"#ff444433"}` }}>
                     {myVote.side===result ? (
@@ -472,6 +583,38 @@ export default function App() {
                   김우림: <strong style={{ color:PLAYERS.b.color }}>{countB}명</strong><br/>
                   {payoutA && <>이준호 승리 배당: <strong style={{ color:"#ffcc44" }}>×{payoutA.toFixed(2)}</strong>&nbsp;·&nbsp;</>}
                   {payoutB && <>김우림 승리 배당: <strong style={{ color:"#ffcc44" }}>×{payoutB.toFixed(2)}</strong></>}
+                </div>
+
+                {/* 참여자 실명 목록 */}
+                <div style={{ marginBottom:24 }}>
+                  <div style={{ fontSize:12, color:"#8899aa", marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span>참여자 실명 목록</span>
+                    <button onClick={loadAdminData} style={{ padding:"4px 10px", cursor:"pointer", borderRadius:4, background:"transparent", border:"1px solid #334455", color:"#556677", fontSize:10, fontFamily:"'Orbitron',monospace" }}>
+                      불러오기
+                    </button>
+                  </div>
+                  {adminVotes.length === 0 ? (
+                    <div style={{ fontSize:11, color:"#334455", padding:"10px 0" }}>위 버튼을 눌러 실명을 불러오세요</div>
+                  ) : (
+                    <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:200, overflowY:"auto" }}>
+                      {adminVotes.map((v, i) => {
+                        const p = PLAYERS[v.side];
+                        const isWinner = result && v.side === result;
+                        const isLoser  = result && v.side !== result;
+                        return (
+                          <div key={v.id} style={{ display:"flex", alignItems:"center", gap:8, background:"#0a0f18", borderRadius:6, padding:"7px 10px", border:"1px solid #ffffff08" }}>
+                            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#2a3a4a", minWidth:16 }}>{String(i+1).padStart(2,"0")}</div>
+                            <div style={{ flex:1 }}>
+                              <span style={{ fontSize:13, color: isWinner ? "#44ff88" : isLoser ? "#ff5555" : "#ccd8e8" }}>{v.nickname}</span>
+                              {v.realname && <span style={{ fontSize:12, color:"#ffcc44", marginLeft:8 }}>({v.realname})</span>}
+                              {!v.realname && <span style={{ fontSize:11, color:"#334455", marginLeft:8 }}>실명 미입력</span>}
+                            </div>
+                            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:p.color }}>{p.raceIcon} {p.name}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ marginBottom:24 }}>
