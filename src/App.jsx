@@ -645,6 +645,10 @@ export default function App() {
                           </span>
                         </div>
                         <div style={{ fontSize:11, color:"#446633", marginTop:4 }}>({session.bet}장 × {winnerPayout?.toFixed(2)}배)</div>
+                        <div style={{ fontSize:11, color:"#445533", marginTop:8, lineHeight:1.7 }}>
+                          커피 쿠폰은 소수점으로 나눌 수 없어서<br/>정산 시 배당은 임의로 내림 처리될 수 있습니다.<br/>
+                          <span style={{ color:"#666633" }}>(재미인 점 잊지 말기...! 😄)</span>
+                        </div>
                       </>
                     ) : (
                       <>
@@ -775,10 +779,12 @@ export default function App() {
                 })}
               </div>
             )}
-          </div>
-        )}
-
-        {/* ── 관리자 탭 ── */}
+            {result && allVotes.length > 0 && (
+              <div style={{ marginTop:12, fontSize:11, color:"#445533", textAlign:"center", lineHeight:1.7 }}>
+                커피 쿠폰은 소수점으로 나눌 수 없어서 정산 시 배당은 임의로 내림 처리될 수 있습니다.<br/>
+                <span style={{ color:"#666633" }}>(재미인 점 잊지 말기...! 😄)</span>
+              </div>
+            )}
         {tab==="admin" && (
           <div className="fade-in">
             {!adminMode ? (
