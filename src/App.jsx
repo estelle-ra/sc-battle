@@ -785,6 +785,10 @@ export default function App() {
                 <span style={{ color:"#666633" }}>(재미인 점 잊지 말기...! 😄)</span>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── 관리자 탭 ── */}
         {tab==="admin" && (
           <div className="fade-in">
             {!adminMode ? (
