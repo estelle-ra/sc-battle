@@ -752,7 +752,7 @@ export default function App() {
               <div style={{ textAlign:"center", padding:"48px 20px", color:"#334455", fontFamily:"'Orbitron',monospace", fontSize:11, letterSpacing:3 }}>아직 참여자가 없습니다</div>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                {allVotes.map((v, i) => {
+                {[...allVotes].sort((a,b) => (b.bet||1) - (a.bet||1)).map((v, i) => {
                   const p        = PLAYERS[v.side];
                   const isWinner = result && v.side===result;
                   const isLoser  = result && v.side!==result;
