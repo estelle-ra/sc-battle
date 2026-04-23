@@ -52,6 +52,9 @@ export default function App() {
   const [loginData, setLoginData]   = useState({ nickname:"", pin:"" });
   const [loginBusy, setLoginBusy]   = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [loginStep, setLoginStep]   = useState("input"); // input | setNewPin
+  const [loginNewPin, setLoginNewPin] = useState("");
+  const [loginNewPinBusy, setLoginNewPinBusy] = useState(false);
 
   const [editingProfile, setEditingProfile] = useState(false);
   const [editNickname, setEditNickname]     = useState("");
@@ -157,11 +160,44 @@ export default function App() {
       } else {
         if      (res.error === "WRONG_PIN")  setLoginError("PIN이 틀렸어요");
         else if (res.error === "NOT_FOUND")  setLoginError("해당 닉네임을 찾을 수 없어요");
-        else if (res.error === "NO_PIN")     setLoginError("이 닉네임은 PIN이 설정되지 않았어요. 처음 투표한 기기에서 PIN을 설정해주세요");
+        else if (res.error === "NO_PIN") {
+          // PIN 없는 기존 참여자 → PIN 설정 단계로
+          setLoginStep("setNewPin");
+          setLoginError("");
+        }
         else setLoginError("오류가 발생했어요");
       }
     } catch { setLoginError("오류가 발생했어요"); }
     setLoginBusy(false);
+  }
+
+  // 기존 참여자 — 닉네임만으로 PIN 신규 설정 후 로그인
+  async function handleLoginSetNewPin() {
+    if (loginNewPin.length < 4 || loginNewPinBusy) return;
+    setLoginNewPinBusy(true); setLoginError("");
+    try {
+      const setRes = await api({ action:"setPin", nickname:loginData.nickname.trim(), pin:loginNewPin.trim() });
+      if (setRes.ok || setRes.error === "PIN_ALREADY_SET") {
+        // PIN 설정 완료 → 바로 verifyPin으로 로그인
+        const verRes = await api({ action:"verifyPin", nickname:loginData.nickname.trim(), pin:loginNewPin.trim() });
+        if (verRes.ok) {
+          const all   = await api({ action:"getAll" });
+          const round = all.round ?? 1;
+          const sess  = { nickname:loginData.nickname.trim(), side:verRes.side, realname:verRes.realname||"", pin:loginNewPin.trim(), bet:verRes.bet||1 };
+          saveSession(sess, round);
+          setScreen("done"); setTab("board");
+        } else {
+          setLoginError("인증에 실패했어요. 다시 시도해주세요");
+          setLoginStep("input");
+        }
+      } else if (setRes.error === "NOT_FOUND") {
+        setLoginError("해당 닉네임을 찾을 수 없어요. 닉네임을 확인해주세요");
+        setLoginStep("input");
+      } else {
+        setLoginError("오류가 발생했어요");
+      }
+    } catch { setLoginError("오류가 발생했어요"); }
+    setLoginNewPinBusy(false);
   }
 
   async function handleUpdateProfile() {
@@ -575,17 +611,61 @@ export default function App() {
             {screen==="login" && (
               <div className="fade-in" style={{ background:"linear-gradient(135deg,#0a1628,#0d1e35)", border:"1px solid #00d4ff22", borderRadius:12, padding:"24px 20px" }}>
                 <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#00d4ff88", letterSpacing:3, marginBottom:16 }}>🔑 내 예측 찾기</div>
-                <p style={{ fontSize:14, color:"#8899aa", lineHeight:1.8, marginBottom:20 }}>처음 투표한 기기가 아닌 경우,<br/>닉네임과 PIN을 입력해 인증하세요.</p>
-                <Field label="닉네임">
-                  <input value={loginData.nickname} onChange={e=>{setLoginData(p=>({...p,nickname:e.target.value}));setLoginError("");}} placeholder="샛별" style={inputStyle(!!loginError)} />
-                </Field>
-                <Field label="PIN 번호" error={loginError}>
-                  <input value={loginData.pin} onChange={e=>{setLoginData(p=>({...p,pin:e.target.value.replace(/\D/g,"").slice(0,4)}));setLoginError("");}} onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="1234" maxLength={4} style={inputStyle(!!loginError)} />
-                </Field>
-                <button onClick={handleLogin} disabled={!loginData.nickname.trim()||loginData.pin.length<4||loginBusy} style={{ ...primaryBtn(!loginData.nickname.trim()||loginData.pin.length<4||loginBusy), display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:10 }}>
-                  {loginBusy ? <><span className="spinner" />확인 중...</> : "인증 →"}
-                </button>
-                <button onClick={()=>setScreen("form")} style={{ width:"100%", padding:"9px", cursor:"pointer", background:"transparent", border:"1px solid #334455", color:"#556677", borderRadius:6, fontSize:11, fontFamily:"'Orbitron',monospace" }}>← 돌아가기</button>
+
+                {/* 단계 1: 닉네임 + PIN 입력 */}
+                {loginStep==="input" && (
+                  <>
+                    <p style={{ fontSize:14, color:"#8899aa", lineHeight:1.8, marginBottom:20 }}>
+                      처음 투표한 기기가 아닌 경우,<br/>닉네임과 PIN을 입력해 인증하세요.<br/>
+                      <span style={{ fontSize:12, color:"#445566" }}>PIN을 설정한 적 없으면 닉네임만 입력하고 인증을 시도해보세요.</span>
+                    </p>
+                    <Field label="닉네임">
+                      <input value={loginData.nickname} onChange={e=>{setLoginData(p=>({...p,nickname:e.target.value}));setLoginError("");}} placeholder="샛별" style={inputStyle(!!loginError)} />
+                    </Field>
+                    <Field label="PIN 번호" hint="설정한 적 없으면 비워두세요" error={loginError}>
+                      <input value={loginData.pin} onChange={e=>{setLoginData(p=>({...p,pin:e.target.value.replace(/\D/g,"").slice(0,4)}));setLoginError("");}}
+                        onKeyDown={e=>e.key==="Enter"&&handleLogin()} placeholder="1234 (없으면 비워두기)" maxLength={4} style={inputStyle(!!loginError)} />
+                    </Field>
+                    <button
+                      onClick={() => {
+                        if (loginData.pin.length === 0) {
+                          // PIN 없이 닉네임만 → NO_PIN 플로우 직행
+                          setLoginStep("setNewPin"); setLoginError("");
+                        } else {
+                          handleLogin();
+                        }
+                      }}
+                      disabled={!loginData.nickname.trim()||loginBusy}
+                      style={{ ...primaryBtn(!loginData.nickname.trim()||loginBusy), display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:10 }}>
+                      {loginBusy ? <><span className="spinner" />확인 중...</> : "인증 →"}
+                    </button>
+                  </>
+                )}
+
+                {/* 단계 2: PIN 없는 기존 참여자 — 새 PIN 설정 */}
+                {loginStep==="setNewPin" && (
+                  <>
+                    <div style={{ background:"#0a1a10", border:"1px solid #44ff8833", borderRadius:8, padding:"10px 14px", marginBottom:20 }}>
+                      <div style={{ fontSize:13, color:"#44ff88" }}>✓ 닉네임 확인됨</div>
+                      <div style={{ fontSize:14, color:"#8899aa", marginTop:4 }}>
+                        <strong style={{ color:"#e0eaf8" }}>{loginData.nickname}</strong> 님, 처음 접속이시군요!<br/>
+                        앞으로 사용할 PIN 4자리를 새로 설정해주세요.
+                      </div>
+                    </div>
+                    <Field label="새 PIN 설정 (숫자 4자리)" error={loginError}>
+                      <input value={loginNewPin} onChange={e=>{setLoginNewPin(e.target.value.replace(/\D/g,"").slice(0,4));setLoginError("");}}
+                        onKeyDown={e=>e.key==="Enter"&&handleLoginSetNewPin()} placeholder="1234" maxLength={4} style={inputStyle(!!loginError)} />
+                    </Field>
+                    <button onClick={handleLoginSetNewPin} disabled={loginNewPin.length<4||loginNewPinBusy} style={{ ...primaryBtn(loginNewPin.length<4||loginNewPinBusy), display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:10 }}>
+                      {loginNewPinBusy ? <><span className="spinner" />설정 중...</> : "PIN 설정하고 로그인 →"}
+                    </button>
+                    <button onClick={()=>{setLoginStep("input");setLoginError("");setLoginNewPin("");}} style={{ width:"100%", padding:"9px", cursor:"pointer", background:"transparent", border:"1px solid #334455", color:"#556677", borderRadius:6, fontSize:11, fontFamily:"'Orbitron',monospace" }}>← 뒤로</button>
+                  </>
+                )}
+
+                {loginStep==="input" && (
+                  <button onClick={()=>{setScreen("form");setLoginStep("input");setLoginError("");}} style={{ width:"100%", padding:"9px", cursor:"pointer", background:"transparent", border:"1px solid #334455", color:"#556677", borderRadius:6, fontSize:11, fontFamily:"'Orbitron',monospace" }}>← 돌아가기</button>
+                )}
               </div>
             )}
           </div>
