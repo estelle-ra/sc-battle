@@ -85,6 +85,7 @@ export default function App() {
   const [editNickname, setEditNickname]     = useState("");
   const [editRealname, setEditRealname]     = useState("");
   const [editBet, setEditBet]               = useState(1);
+  const [editSide, setEditSide]             = useState(null);
   const [editBusy, setEditBusy]             = useState(false);
   const [editError, setEditError]           = useState("");
 
@@ -242,6 +243,7 @@ export default function App() {
         newNickname:editNickname.trim()||session.nickname,
         newRealname:editRealname,
         newBet:editBet,
+        newSide:editSide,
       });
       if (res.ok) {
         const newNick = editNickname.trim() || session.nickname;
@@ -249,8 +251,9 @@ export default function App() {
         saved.session.nickname = newNick;
         saved.session.realname = editRealname;
         saved.session.bet      = editBet;
+        saved.session.side     = editSide;
         localStorage.setItem(LS_KEY, JSON.stringify(saved));
-        setSession(s => ({ ...s, nickname:newNick, realname:editRealname, bet:editBet }));
+        setSession(s => ({ ...s, nickname:newNick, realname:editRealname, bet:editBet, side:editSide }));
         setEditingProfile(false);
         await loadData();
       } else if (res.error === "DUPLICATE") setEditError("이미 사용 중인 닉네임이에요");
@@ -601,8 +604,8 @@ export default function App() {
                 {!result && (
                   <div style={{ marginTop:16 }}>
                     {!editingProfile ? (
-                      <button onClick={()=>{ setEditingProfile(true); setEditNickname(session.nickname); setEditRealname(session.realname||""); setEditBet(session.bet||1); }} style={{ padding:"8px 18px", cursor:"pointer", borderRadius:6, background:"transparent", border:"1px solid #445566", color:"#667788", fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2 }}>
-                        ✏️ 닉네임 / 실명 / 티켓 수정
+                      <button onClick={()=>{ setEditingProfile(true); setEditNickname(session.nickname); setEditRealname(session.realname||""); setEditBet(session.bet||1); setEditSide(session.side); }} style={{ padding:"8px 18px", cursor:"pointer", borderRadius:6, background:"transparent", border:"1px solid #445566", color:"#667788", fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2 }}>
+                        ✏️ 닉네임 / 실명 / 티켓 / 예측 수정
                       </button>
                     ) : (
                       <div style={{ textAlign:"left" }}>
@@ -612,6 +615,29 @@ export default function App() {
                         <Field label="실명 (본인·관리자만)">
                           <input value={editRealname} onChange={e=>setEditRealname(e.target.value)} placeholder="라샛별" style={inputStyle()} />
                         </Field>
+
+                        {/* 승리 예측 변경 */}
+                        <div style={{ marginBottom:14 }}>
+                          <label style={{ fontSize:15, color:"#8899aa", display:"block", marginBottom:10 }}>승리 예측 변경</label>
+                          <div style={{ display:"flex", gap:10 }}>
+                            {["a","b"].map(side => {
+                              const p = PLAYERS[side];
+                              const sel = editSide===side;
+                              return (
+                                <button key={side} className="pick-btn" onClick={()=>setEditSide(side)} style={{
+                                  flex:1, padding:"12px 10px", cursor:"pointer", borderRadius:8,
+                                  background:sel?p.bg:"#050a12", border:`2px solid ${sel?p.color:"#1a2a3a"}`,
+                                  color:sel?p.color:"#445566", fontFamily:"'Orbitron',monospace", fontSize:13, fontWeight:700,
+                                  boxShadow:sel?`0 0 16px ${p.dim}`:"none",
+                                }}>
+                                  <div>{p.raceIcon} {p.name}</div>
+                                  <div style={{ fontSize:9, letterSpacing:2, marginTop:2, opacity:0.6 }}>{p.race}</div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
                         <div style={{ marginBottom:14 }}>
                           <label style={{ fontSize:15, color:"#8899aa", display:"block", marginBottom:8 }}>
                             베팅 티켓 수 <span style={{ color:"#445566", fontSize:12 }}>최대 10장</span>
