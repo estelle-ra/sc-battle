@@ -95,7 +95,9 @@ export default function App() {
   const [adminError, setAdminError] = useState("");
   const [resultPick, setResultPick] = useState(null);
   const [adminBusy, setAdminBusy]   = useState(false);
-  const [deleting, setDeleting]     = useState(null); // voteId being deleted
+  const [deleting, setDeleting]     = useState(null);
+  const [adminEditId, setAdminEditId]       = useState(null); // 실명 수정 중인 voteId
+  const [adminRealnameInput, setAdminRealnameInput] = useState(""); // voteId being deleted
 
   const loadData = useCallback(async () => {
     try {
@@ -277,7 +279,17 @@ export default function App() {
     setAdminBusy(false);
   }
 
-  async function handleDeleteVote(voteId) {
+  async function handleAdminSetRealname(voteId) {
+    if (!adminRealnameInput.trim()) return;
+    try {
+      const res = await api({ action:"adminSetRealname", voteId:String(voteId), realname:adminRealnameInput.trim(), pw:ADMIN_PW });
+      if (res.ok) {
+        setAdminVotes(v => v.map(x => String(x.id)===String(voteId) ? {...x, realname:adminRealnameInput.trim()} : x));
+        setAdminEditId(null);
+        setAdminRealnameInput("");
+      }
+    } catch {}
+  }
     if (deleting) return;
     setDeleting(voteId);
     try {
@@ -872,24 +884,40 @@ export default function App() {
                         const isLoser  = result && v.side!==result;
                         const isDel    = deleting === v.id;
                         return (
-                          <div key={v.id} style={{ display:"flex", alignItems:"center", gap:8, background:"#0a0f18", borderRadius:6, padding:"7px 10px", border:"1px solid #ffffff08" }}>
-                            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#2a3a4a", minWidth:16 }}>{String(i+1).padStart(2,"0")}</div>
-                            <div style={{ flex:1 }}>
-                              <span style={{ fontSize:13, color:isWinner?"#44ff88":isLoser?"#ff5555":"#ccd8e8" }}>{v.nickname}</span>
-                              {v.realname ? <span style={{ fontSize:12, color:"#ffcc44", marginLeft:6 }}>({v.realname})</span>
-                                : <span style={{ fontSize:11, color:"#334455", marginLeft:6 }}>실명없음</span>}
-                              {!v.hasPin && <span style={{ fontSize:10, color:"#664400", marginLeft:4 }}>PIN없음</span>}
-                              <span style={{ fontSize:11, color:"#556633", marginLeft:6 }}>🎫{v.bet||1}</span>
+                          <div key={v.id} style={{ background:"#0a0f18", borderRadius:6, padding:"7px 10px", border:"1px solid #ffffff08" }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                              <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#2a3a4a", minWidth:16 }}>{String(i+1).padStart(2,"0")}</div>
+                              <div style={{ flex:1 }}>
+                                <span style={{ fontSize:13, color:isWinner?"#44ff88":isLoser?"#ff5555":"#ccd8e8" }}>{v.nickname}</span>
+                                {v.realname
+                                  ? <span style={{ fontSize:12, color:"#ffcc44", marginLeft:6 }}>({v.realname})</span>
+                                  : <span style={{ fontSize:11, color:"#664400", marginLeft:6 }}>실명없음</span>}
+                                {!v.hasPin && <span style={{ fontSize:10, color:"#443300", marginLeft:4 }}>PIN없음</span>}
+                                <span style={{ fontSize:11, color:"#556633", marginLeft:6 }}>🎫{v.bet||1}</span>
+                              </div>
+                              <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:p.color, marginRight:2 }}>{p.raceIcon}</div>
+                              <button onClick={()=>{ setAdminEditId(v.id); setAdminRealnameInput(v.realname||""); }} style={{
+                                padding:"3px 8px", cursor:"pointer", borderRadius:4,
+                                background:"transparent", border:"1px solid #ffcc4433",
+                                color:"#ffcc44", fontSize:10, fontFamily:"'Orbitron',monospace",
+                              }}>실명</button>
+                              <button onClick={()=>handleDeleteVote(v.id)} disabled={!!deleting} style={{
+                                padding:"3px 8px", cursor:deleting?"not-allowed":"pointer", borderRadius:4,
+                                background:"transparent", border:"1px solid #ff444433",
+                                color:isDel?"#553333":"#ff4444", fontSize:10, fontFamily:"'Orbitron',monospace",
+                              }}>{isDel?"...":"삭제"}</button>
                             </div>
-                            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:p.color, marginRight:4 }}>{p.raceIcon}</div>
-                            <button onClick={()=>handleDeleteVote(v.id)} disabled={!!deleting} style={{
-                              padding:"4px 10px", cursor:deleting?"not-allowed":"pointer", borderRadius:4,
-                              background:"transparent", border:"1px solid #ff444433",
-                              color: isDel ? "#553333" : "#ff4444",
-                              fontSize:10, fontFamily:"'Orbitron',monospace",
-                            }}>
-                              {isDel ? "..." : "삭제"}
-                            </button>
+                            {/* 실명 인라인 수정 */}
+                            {adminEditId===v.id && (
+                              <div style={{ display:"flex", gap:6, marginTop:6 }}>
+                                <input value={adminRealnameInput} onChange={e=>setAdminRealnameInput(e.target.value)}
+                                  onKeyDown={e=>e.key==="Enter"&&handleAdminSetRealname(v.id)}
+                                  placeholder="실명 입력"
+                                  style={{ flex:1, background:"#050a12", border:"1px solid #ffcc4455", color:"#e0eaf8", padding:"6px 10px", borderRadius:5, fontSize:13, fontFamily:"'Rajdhani',sans-serif", outline:"none" }} />
+                                <button onClick={()=>handleAdminSetRealname(v.id)} style={{ padding:"6px 12px", cursor:"pointer", borderRadius:5, background:"#ffcc4422", border:"1px solid #ffcc4466", color:"#ffcc44", fontSize:11, fontFamily:"'Orbitron',monospace" }}>저장</button>
+                                <button onClick={()=>setAdminEditId(null)} style={{ padding:"6px 10px", cursor:"pointer", borderRadius:5, background:"transparent", border:"1px solid #334455", color:"#556677", fontSize:11, fontFamily:"'Orbitron',monospace" }}>✕</button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
