@@ -290,6 +290,8 @@ export default function App() {
       }
     } catch {}
   }
+
+  async function handleDeleteVote(voteId) {
     if (deleting) return;
     setDeleting(voteId);
     try {
