@@ -990,24 +990,42 @@ export default function App() {
                 {items.sort((a,b)=>(b.bet||1)-(a.bet||1)).map(v => (
                   <div key={v.id} style={{
                     display:"flex", alignItems:"center", gap:10,
-                    background: v.settled ? "var(--color-background-success)" : bg,
-                    border: `1px solid ${v.settled ? "var(--color-border-success)" : border}`,
+                    background: v.settled ? "var(--color-background-success)" : "var(--color-background-primary)",
+                    border: `1px solid ${v.settled ? "var(--color-border-success)" : "var(--color-border-tertiary)"}`,
                     borderRadius:8, padding:"10px 12px",
-                    opacity: v.settled ? 0.75 : 1,
                     transition:"all 0.2s",
                   }}>
+                    {/* 체크박스 느낌의 상태 아이콘 */}
+                    <div style={{
+                      width:22, height:22, borderRadius:6, flexShrink:0,
+                      background: v.settled ? "var(--color-background-success)" : "var(--color-background-secondary)",
+                      border: `2px solid ${v.settled ? "var(--color-border-success)" : "var(--color-border-secondary)"}`,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:13, color:"var(--color-text-success)",
+                    }}>
+                      {v.settled ? "✓" : ""}
+                    </div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:15, fontWeight:500, display:"flex", alignItems:"center", gap:6 }}>
+                      <div style={{ fontSize:15, fontWeight:500, color: v.settled ? "var(--color-text-secondary)" : "var(--color-text-primary)", textDecoration: v.settled ? "line-through" : "none" }}>
                         {v.nickname}
-                        {v.settled && <span style={{ fontSize:11, color:"var(--color-text-success)" }}>✓ 완료</span>}
                       </div>
                       <div style={{ fontSize:12, color:"var(--color-text-secondary)", marginTop:2 }}>
                         베팅 {v.bet||1}장
                         {isWinner
-                          ? <span style={{ color, marginLeft:6 }}>→ 총 배당 {v.payout}장 · <strong>+{v.net}장 수령</strong></span>
-                          : <span style={{ color:"var(--color-text-danger)", marginLeft:6 }}>→ <strong>{v.bet||1}장 제출</strong></span>
+                          ? <span style={{ color, marginLeft:6 }}>+{v.net}장 수령</span>
+                          : <span style={{ color:"var(--color-text-danger)", marginLeft:6 }}>{v.bet||1}장 제출</span>
                         }
                       </div>
+                    </div>
+                    {/* 상태 배지 */}
+                    <div style={{
+                      fontSize:11, padding:"3px 8px", borderRadius:5,
+                      background: v.settled ? "var(--color-background-success)" : "var(--color-background-warning)",
+                      color: v.settled ? "var(--color-text-success)" : "var(--color-text-warning)",
+                      border: `1px solid ${v.settled ? "var(--color-border-success)" : "var(--color-border-warning)"}`,
+                      whiteSpace:"nowrap",
+                    }}>
+                      {v.settled ? "완료" : "대기중"}
                     </div>
                     {adminMode && (
                       <button
@@ -1016,13 +1034,13 @@ export default function App() {
                         style={{
                           padding:"5px 12px", cursor:"pointer", borderRadius:6, fontSize:11,
                           fontFamily:"'Orbitron',monospace", letterSpacing:1,
-                          background: v.settled ? "var(--color-background-danger)" : "var(--color-background-success)",
-                          border: `1px solid ${v.settled ? "var(--color-border-danger)" : "var(--color-border-success)"}`,
-                          color: v.settled ? "var(--color-text-danger)" : "var(--color-text-success)",
+                          background: v.settled ? "var(--color-background-secondary)" : "var(--color-background-success)",
+                          border: `1px solid ${v.settled ? "var(--color-border-secondary)" : "var(--color-border-success)"}`,
+                          color: v.settled ? "var(--color-text-secondary)" : "var(--color-text-success)",
                           whiteSpace:"nowrap",
                         }}
                       >
-                        {settlingId===v.id ? "..." : v.settled ? "취소" : isWinner ? "지급완료" : "제출완료"}
+                        {settlingId===v.id ? "..." : v.settled ? "↩ 취소" : "✓ 완료"}
                       </button>
                     )}
                   </div>
