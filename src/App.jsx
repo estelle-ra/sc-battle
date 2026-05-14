@@ -409,6 +409,9 @@ export default function App() {
             </div>
           </div>
         </a>
+
+        {/* 헤더 */}
+        <div style={{ textAlign:"center", marginBottom:22 }}>
           <div style={{ fontFamily:"'Orbitron',monospace", fontSize:9, letterSpacing:7, color:"#8844cc66", marginBottom:6 }}>PPD · KRAFTON STARCRAFT</div>
           <h1 style={{ fontFamily:"'Orbitron',monospace", fontSize:"clamp(20px,5vw,34px)", fontWeight:900, margin:0, letterSpacing:2, background:"linear-gradient(135deg,#c084fc,#fff,#00d4ff)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>BATTLE PREDICTION</h1>
           {closed && !result && (
