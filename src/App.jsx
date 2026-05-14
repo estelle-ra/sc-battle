@@ -29,7 +29,7 @@ function migrateLocalStorage() {
   }
 }
 
-const PLAYERS = {
+const PLAYERS_DEFAULT = {
   a: {
     name: "이준호", title: "예측불허 랜덤러", race: "RANDOM", raceIcon: "🎲",
     color: "#c084fc", dim: "#c084fc55",
@@ -43,6 +43,16 @@ const PLAYERS = {
     barColor: "linear-gradient(90deg,#00d4ff,#0099cc)",
   },
 };
+
+function mergePlayers(settings) {
+  if (!settings) return PLAYERS_DEFAULT;
+  return {
+    a: { ...PLAYERS_DEFAULT.a, name: settings.player_a_name || PLAYERS_DEFAULT.a.name, race: settings.player_a_race || PLAYERS_DEFAULT.a.race, raceIcon: settings.player_a_icon || PLAYERS_DEFAULT.a.raceIcon, title: settings.player_a_title || PLAYERS_DEFAULT.a.title },
+    b: { ...PLAYERS_DEFAULT.b, name: settings.player_b_name || PLAYERS_DEFAULT.b.name, race: settings.player_b_race || PLAYERS_DEFAULT.b.race, raceIcon: settings.player_b_icon || PLAYERS_DEFAULT.b.raceIcon, title: settings.player_b_title || PLAYERS_DEFAULT.b.title },
+  };
+}
+
+const DEFAULT_NOTICE = "경기 진행 전 예측 티켓과 같은 수량의 크래프톤 카페 쿠폰을 라샛별에게 제출하셔야 인정됩니다.\n이 페이지는 대결을 재미있게 시청하고 응원하기 위한 용도이니 절. 대. 진지하게 임하지 말아 주세요! 😄\n커피 쿠폰은 소수점으로 나눌 수 없어서 정산 시 배당은 임의로 내림 처리될 수 있습니다.";
 
 // 티켓 수 기준 배당 계산
 function calcPayout(totalTickets, sideTickets) {
@@ -61,6 +71,11 @@ export default function App() {
   const [adminVotes, setAdminVotes] = useState([]);
   const [result, setResult]         = useState(null);
   const [closed, setClosed]         = useState(false);
+  const [bannerOn, setBannerOn]     = useState(false);
+  const [bannerUrl, setBannerUrl]   = useState("");
+  const [bannerText, setBannerText] = useState("");
+  const [settings, setSettings]     = useState(null);
+  const [noticeText, setNoticeText] = useState(DEFAULT_NOTICE);
   const [loading, setLoading]       = useState(true);
 
   const [session, setSession]       = useState(null);
@@ -96,8 +111,14 @@ export default function App() {
   const [resultPick, setResultPick] = useState(null);
   const [adminBusy, setAdminBusy]   = useState(false);
   const [deleting, setDeleting]     = useState(null);
-  const [adminEditId, setAdminEditId]       = useState(null); // 실명 수정 중인 voteId
-  const [adminRealnameInput, setAdminRealnameInput] = useState(""); // voteId being deleted
+  const [adminEditId, setAdminEditId]       = useState(null);
+  const [adminRealnameInput, setAdminRealnameInput] = useState("");
+  const [adminBannerOn, setAdminBannerOn]   = useState(false);
+  const [adminBannerUrl, setAdminBannerUrl] = useState("");
+  const [adminBannerText, setAdminBannerText] = useState("");
+  const [bannerBusy, setBannerBusy]         = useState(false);
+  const [adminSettings, setAdminSettings]   = useState(null);
+  const [settingsBusy, setSettingsBusy]     = useState(false); // voteId being deleted
 
   const loadData = useCallback(async () => {
     try {
@@ -107,6 +128,13 @@ export default function App() {
       setAllVotes(data.votes || []);
       setResult(data.result || null);
       setClosed(data.closed || false);
+      setBannerOn(data.bannerOn || false);
+      setBannerUrl(data.bannerUrl || "");
+      setBannerText(data.bannerText || "");
+      if (data.settings) {
+        setSettings(data.settings);
+        setNoticeText(data.settings.notice_text || DEFAULT_NOTICE);
+      }
 
       const saved = localStorage.getItem(LS_KEY);
       if (saved) {
@@ -266,8 +294,51 @@ export default function App() {
   }
 
   function handleAdminLogin() {
-    if (adminPw === ADMIN_PW) { setAdminMode(true); setAdminError(""); }
+    if (adminPw === ADMIN_PW) {
+      setAdminMode(true); setAdminError("");
+      setAdminBannerOn(bannerOn);
+      setAdminBannerUrl(bannerUrl);
+      setAdminBannerText(bannerText);
+      // 현재 설정값 동기화
+      const s = settings || {};
+      setAdminSettings({
+        player_a_name:  s.player_a_name  || PLAYERS_DEFAULT.a.name,
+        player_a_race:  s.player_a_race  || PLAYERS_DEFAULT.a.race,
+        player_a_icon:  s.player_a_icon  || PLAYERS_DEFAULT.a.raceIcon,
+        player_a_title: s.player_a_title || PLAYERS_DEFAULT.a.title,
+        player_b_name:  s.player_b_name  || PLAYERS_DEFAULT.b.name,
+        player_b_race:  s.player_b_race  || PLAYERS_DEFAULT.b.race,
+        player_b_icon:  s.player_b_icon  || PLAYERS_DEFAULT.b.raceIcon,
+        player_b_title: s.player_b_title || PLAYERS_DEFAULT.b.title,
+        notice_text:    s.notice_text    || DEFAULT_NOTICE,
+      });
+    }
     else setAdminError("비밀번호가 틀렸습니다");
+  }
+
+  async function handleSaveSettings() {
+    if (settingsBusy || !adminSettings) return;
+    setSettingsBusy(true);
+    try {
+      const res = await api({ action:"setSettings", pw:ADMIN_PW, ...adminSettings });
+      if (res.ok) await loadData();
+    } catch {}
+    setSettingsBusy(false);
+  }
+
+  async function handleSetBanner() {
+    if (bannerBusy) return;
+    setBannerBusy(true);
+    try {
+      const res = await api({
+        action:"setBanner", pw:ADMIN_PW,
+        bannerOn:String(adminBannerOn),
+        bannerUrl:adminBannerUrl,
+        bannerText:adminBannerText,
+      });
+      if (res.ok) await loadData();
+    } catch {}
+    setBannerBusy(false);
   }
 
   async function handleToggleClosed() {
@@ -333,6 +404,7 @@ export default function App() {
   }
 
   // 티켓 수 기준 배당 계산
+  const PLAYERS = mergePlayers(settings);
   const ticketsA     = allVotes.filter(v=>v.side==="a").reduce((s,v)=>s+(v.bet||1),0);
   const ticketsB     = allVotes.filter(v=>v.side==="b").reduce((s,v)=>s+(v.bet||1),0);
   const totalTickets = ticketsA + ticketsB;
@@ -381,34 +453,24 @@ export default function App() {
 
       <div style={{ position:"relative", zIndex:10, maxWidth:720, margin:"0 auto", padding:"20px 16px 48px" }}>
 
-        {/* 중계 안내 배너 */}
-        <a href="https://discord.gg/kSQFKGnt" target="_blank" rel="noopener noreferrer" style={{ textDecoration:"none", display:"block", marginBottom:20 }}>
-          <div style={{
-            background:"linear-gradient(135deg,#5865f222,#5865f211)",
-            border:"2px solid #5865f2aa",
-            borderRadius:12, padding:"14px 20px",
-            textAlign:"center",
-            boxShadow:"0 0 30px #5865f233",
-            cursor:"pointer",
-          }}>
-            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#5865f2", letterSpacing:4, marginBottom:6 }}>
-              📡 LIVE STREAMING
-            </div>
-            <div style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:"clamp(16px,4vw,24px)", color:"#fff", marginBottom:4 }}>
-              🎮 오늘 12:30 디스코드 생중계!
-            </div>
-            <div style={{ fontSize:13, color:"#8899cc", marginBottom:8 }}>
-              대결을 실시간으로 함께 시청해요
-            </div>
+        {/* 중계 안내 배너 - 관리자가 켠 경우에만 표시 */}
+        {bannerOn && bannerUrl && (
+          <a href={bannerUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration:"none", display:"block", marginBottom:20 }}>
             <div style={{
-              display:"inline-block", background:"#5865f233", border:"1px solid #5865f266",
-              borderRadius:6, padding:"5px 14px",
-              fontFamily:"'Orbitron',monospace", fontSize:11, color:"#5865f2", letterSpacing:2,
+              background:"linear-gradient(135deg,#5865f222,#5865f211)",
+              border:"2px solid #5865f2aa", borderRadius:12, padding:"14px 20px",
+              textAlign:"center", boxShadow:"0 0 30px #5865f233", cursor:"pointer",
             }}>
-              discord.gg/kSQFKGnt →
+              <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#5865f2", letterSpacing:4, marginBottom:6 }}>📡 LIVE STREAMING</div>
+              <div style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:"clamp(16px,4vw,24px)", color:"#fff", marginBottom:4 }}>
+                {bannerText || "디스코드 생중계!"}
+              </div>
+              <div style={{ display:"inline-block", background:"#5865f233", border:"1px solid #5865f266", borderRadius:6, padding:"5px 14px", fontFamily:"'Orbitron',monospace", fontSize:11, color:"#5865f2", letterSpacing:2 }}>
+                {bannerUrl.replace("https://","").replace("http://","")} →
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+        )}
 
         {/* 헤더 */}
         <div style={{ textAlign:"center", marginBottom:22 }}>
@@ -420,8 +482,19 @@ export default function App() {
             </div>
           )}
           {result && (
-            <div className="fade-in" style={{ marginTop:10, display:"inline-block", background:PLAYERS[result].bg, border:`2px solid ${PLAYERS[result].color}`, borderRadius:8, padding:"8px 20px" }}>
-              <span style={{ fontFamily:"'Orbitron',monospace", fontSize:11, color:PLAYERS[result].color, letterSpacing:3 }}>🏆 최종 승자: {PLAYERS[result].name}</span>
+            <div className="fade-in" style={{ marginTop:14 }}>
+              <div style={{
+                background:`linear-gradient(135deg,${PLAYERS[result].bg.match(/#\w+/g)?.[0] || "#0a0a0a"},#050a12)`,
+                border:`3px solid ${PLAYERS[result].color}`,
+                borderRadius:14, padding:"20px 24px",
+                boxShadow:`0 0 60px ${PLAYERS[result].dim}, 0 0 120px ${PLAYERS[result].dim}`,
+              }}>
+                <div style={{ fontFamily:"'Orbitron',monospace", fontSize:11, color:PLAYERS[result].color, letterSpacing:5, marginBottom:8 }}>🏆 WINNER</div>
+                <div style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:"clamp(28px,7vw,52px)", color:PLAYERS[result].color, lineHeight:1.1, marginBottom:6 }}>
+                  {PLAYERS[result].name}
+                </div>
+                <div style={{ fontSize:15, color: result==="a" ? "#aa88cc" : "#3388aa" }}>{PLAYERS[result].title}</div>
+              </div>
             </div>
           )}
         </div>
@@ -575,10 +648,9 @@ export default function App() {
                 <div style={{ background:"#0d0a00", border:"1px solid #ffcc4444", borderRadius:8, padding:"12px 16px", marginBottom:18 }}>
                   <div style={{ fontSize:13, color:"#ccaa33", lineHeight:2 }}>
                     ⚠️ <strong style={{ color:"#ffcc44" }}>필수 안내</strong><br/>
-                    경기 진행 전 예측 티켓과 같은 수량의<br/>
-                    <strong style={{ color:"#ffcc44" }}>크래프톤 카페 쿠폰을 라샛별에게 제출</strong>하셔야 인정됩니다.<br/>
-                    <span style={{ color:"#887722", fontSize:12 }}>이 페이지는 대결을 재미있게 시청하고 응원하기 위한 용도이니<br/>절. 대. 진지하게 임하지 말아 주세요! 😄</span><br/>
-                    <span style={{ color:"#665522", fontSize:11 }}>커피 쿠폰은 소수점으로 나눌 수 없어서 정산 시 배당은 임의로 내림 처리될 수 있습니다.</span>
+                    {noticeText.split("\n").map((line, i) => (
+                      <span key={i}>{line}<br/></span>
+                    ))}
                   </div>
                 </div>
 
@@ -635,10 +707,10 @@ export default function App() {
                 {!result && (
                   <div style={{ background:"#0d0a00", border:"1px solid #ffcc4433", borderRadius:8, padding:"10px 14px", marginTop:14, textAlign:"left" }}>
                     <div style={{ fontSize:12, color:"#ccaa33", lineHeight:1.9 }}>
-                      ⚠️ 예측 티켓 <strong style={{ color:"#ffcc44" }}>{session.bet}장</strong>에 해당하는<br/>
-                      <strong style={{ color:"#ffcc44" }}>크래프톤 카페 쿠폰을 라샛별에게 제출</strong>해주세요.<br/>
-                      <span style={{ color:"#887722", fontSize:11 }}>절. 대. 진지하게 임하지 말아 주세요! 😄</span><br/>
-                      <span style={{ color:"#665522", fontSize:11 }}>커피 쿠폰은 소수점으로 나눌 수 없어서 정산 시 배당은 임의로 내림 처리될 수 있습니다.</span>
+                      ⚠️ 예측 티켓 <strong style={{ color:"#ffcc44" }}>{session.bet}장</strong>에 해당하는 쿠폰을 제출해주세요.<br/>
+                      {noticeText.split("\n").map((line, i) => (
+                        <span key={i} style={{ fontSize:11, color: i===0 ? "#ccaa33" : "#887722" }}>{line}<br/></span>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -883,6 +955,42 @@ export default function App() {
                   {payoutB && <>김우림 배당: <strong style={{ color:"#ffcc44" }}>×{payoutB.toFixed(2)}</strong></>}
                 </div>
 
+                {/* 배너 설정 */}
+                <div style={{ marginBottom:24 }}>
+                  <div style={{ fontSize:13, color:"#8899aa", marginBottom:12 }}>📡 중계 배너 설정</div>
+                  <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                    <button onClick={()=>setAdminBannerOn(true)} style={{
+                      flex:1, padding:"9px", cursor:"pointer", borderRadius:6,
+                      background:adminBannerOn?"linear-gradient(135deg,#5865f222,#5865f211)":"#050a12",
+                      border:`2px solid ${adminBannerOn?"#5865f2aa":"#1a2a3a"}`,
+                      color:adminBannerOn?"#5865f2":"#445566",
+                      fontFamily:"'Orbitron',monospace", fontSize:10,
+                    }}>🟢 ON</button>
+                    <button onClick={()=>setAdminBannerOn(false)} style={{
+                      flex:1, padding:"9px", cursor:"pointer", borderRadius:6,
+                      background:!adminBannerOn?"linear-gradient(135deg,#ff444422,#aa110011)":"#050a12",
+                      border:`2px solid ${!adminBannerOn?"#ff444466":"#1a2a3a"}`,
+                      color:!adminBannerOn?"#ff6666":"#445566",
+                      fontFamily:"'Orbitron',monospace", fontSize:10,
+                    }}>🔴 OFF</button>
+                  </div>
+                  <input value={adminBannerText} onChange={e=>setAdminBannerText(e.target.value)}
+                    placeholder="배너 텍스트 (예: 오늘 12:30 디스코드 생중계!)"
+                    style={{ ...inputStyle(), marginBottom:8 }} />
+                  <input value={adminBannerUrl} onChange={e=>setAdminBannerUrl(e.target.value)}
+                    placeholder="링크 URL (예: https://discord.gg/xxxxx)"
+                    style={{ ...inputStyle(), marginBottom:8 }} />
+                  <button onClick={handleSetBanner} disabled={bannerBusy} style={{
+                    width:"100%", padding:"10px", cursor:"pointer", borderRadius:6,
+                    background:"linear-gradient(135deg,#5865f222,#5865f211)",
+                    border:"1px solid #5865f266", color:"#5865f2",
+                    fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2,
+                    display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                  }}>
+                    {bannerBusy ? <><span className="spinner" />저장 중...</> : "배너 설정 저장 →"}
+                  </button>
+                </div>
+
                 {/* 참여 마감 토글 */}
                 <div style={{ marginBottom:24 }}>
                   <div style={{ fontSize:13, color:"#8899aa", marginBottom:10 }}>참여 마감 관리</div>
@@ -975,7 +1083,63 @@ export default function App() {
                   {result && <button onClick={handleResetResult} disabled={adminBusy} style={{ width:"100%", padding:"9px", cursor:"pointer", background:"transparent", border:"1px solid #334455", color:"#556677", borderRadius:6, fontSize:11, fontFamily:"'Orbitron',monospace", letterSpacing:2 }}>결과 초기화</button>}
                 </div>
 
+                {/* 전체 초기화 */}
                 <div style={{ borderTop:"1px solid #1a2a3a", paddingTop:20 }}>
+
+                  {/* 선수 & 안내문 설정 */}
+                  <div style={{ marginBottom:20 }}>
+                    <div style={{ fontSize:13, color:"#8899aa", marginBottom:12 }}>⚙ 선수 정보 & 안내 문구 설정</div>
+                    {adminSettings && (
+                      <>
+                        {[["a","c084fc"],["b","00d4ff"]].map(([side, hex]) => (
+                          <div key={side} style={{ background:"#050a12", borderRadius:8, padding:"12px 14px", marginBottom:10, border:`1px solid #${hex}22` }}>
+                            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:`#${hex}`, letterSpacing:3, marginBottom:8 }}>PLAYER {side.toUpperCase()}</div>
+                            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:6 }}>
+                              <div>
+                                <div style={{ fontSize:11, color:"#556677", marginBottom:3 }}>이름</div>
+                                <input value={adminSettings[`player_${side}_name`]} onChange={e=>setAdminSettings(s=>({...s,[`player_${side}_name`]:e.target.value}))} style={{ ...inputStyle(), fontSize:13, padding:"6px 10px" }} />
+                              </div>
+                              <div>
+                                <div style={{ fontSize:11, color:"#556677", marginBottom:3 }}>종족</div>
+                                <input value={adminSettings[`player_${side}_race`]} onChange={e=>setAdminSettings(s=>({...s,[`player_${side}_race`]:e.target.value}))} style={{ ...inputStyle(), fontSize:13, padding:"6px 10px" }} placeholder="TERRAN" />
+                              </div>
+                            </div>
+                            <div style={{ display:"grid", gridTemplateColumns:"60px 1fr", gap:6 }}>
+                              <div>
+                                <div style={{ fontSize:11, color:"#556677", marginBottom:3 }}>아이콘</div>
+                                <input value={adminSettings[`player_${side}_icon`]} onChange={e=>setAdminSettings(s=>({...s,[`player_${side}_icon`]:e.target.value}))} style={{ ...inputStyle(), fontSize:18, padding:"4px 8px", textAlign:"center" }} />
+                              </div>
+                              <div>
+                                <div style={{ fontSize:11, color:"#556677", marginBottom:3 }}>표현 문구</div>
+                                <input value={adminSettings[`player_${side}_title`]} onChange={e=>setAdminSettings(s=>({...s,[`player_${side}_title`]:e.target.value}))} style={{ ...inputStyle(), fontSize:13, padding:"6px 10px" }} placeholder="테란의 황제" />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <div style={{ marginBottom:10 }}>
+                          <div style={{ fontSize:11, color:"#556677", marginBottom:6 }}>필수 안내 문구 (줄바꿈으로 구분)</div>
+                          <textarea
+                            value={adminSettings.notice_text}
+                            onChange={e=>setAdminSettings(s=>({...s,notice_text:e.target.value}))}
+                            rows={4}
+                            style={{ ...inputStyle(), resize:"vertical", fontSize:12, lineHeight:1.7 }}
+                          />
+                        </div>
+
+                        <button onClick={handleSaveSettings} disabled={settingsBusy} style={{
+                          width:"100%", padding:"10px", cursor:"pointer", borderRadius:6,
+                          background:"linear-gradient(135deg,#c084fc22,#8833cc11)",
+                          border:"1px solid #c084fc55", color:"#c084fc",
+                          fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2,
+                          display:"flex", alignItems:"center", justifyContent:"center", gap:6,
+                        }}>
+                          {settingsBusy ? <><span className="spinner" />저장 중...</> : "설정 저장 →"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
                   <div style={{ fontSize:12, color:"#445566", marginBottom:10 }}>⚠ 전체 데이터 초기화</div>
                   <button onClick={handleResetAll} disabled={adminBusy} style={{ width:"100%", padding:"9px", cursor:"pointer", background:"transparent", border:"1px solid #ff444433", color:"#ff4444", borderRadius:6, fontSize:11, fontFamily:"'Orbitron',monospace", letterSpacing:2 }}>모든 투표 삭제</button>
                 </div>
@@ -1003,7 +1167,7 @@ function Field({ label, hint, error, children }) {
 }
 
 function inputStyle(hasError) {
-  return { width:"100%", background:"#050a12", border:`1px solid ${hasError?"#ff4444":"#c084fc33"}`, color:"#e0eaf8", padding:"10px 14px", borderRadius:6, fontSize:16, fontFamily:"'Rajdhani',sans-serif" };
+  return { width:"100%", background:"#050a12", border:`1px solid ${hasError?"#ff4444":"#c084fc33"}`, color:"#e0eaf8", padding:"10px 14px", borderRadius:6, fontSize:16, fontFamily:"'Rajdhani',sans-serif", outline:"none" };
 }
 
 function primaryBtn(disabled) {
