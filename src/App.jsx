@@ -381,8 +381,34 @@ export default function App() {
 
       <div style={{ position:"relative", zIndex:10, maxWidth:720, margin:"0 auto", padding:"20px 16px 48px" }}>
 
-        {/* 헤더 */}
-        <div style={{ textAlign:"center", marginBottom:22 }}>
+        {/* 중계 안내 배너 */}
+        <a href="https://discord.gg/kSQFKGnt" target="_blank" rel="noopener noreferrer" style={{ textDecoration:"none", display:"block", marginBottom:20 }}>
+          <div style={{
+            background:"linear-gradient(135deg,#5865f222,#5865f211)",
+            border:"2px solid #5865f2aa",
+            borderRadius:12, padding:"14px 20px",
+            textAlign:"center",
+            boxShadow:"0 0 30px #5865f233",
+            cursor:"pointer",
+          }}>
+            <div style={{ fontFamily:"'Orbitron',monospace", fontSize:10, color:"#5865f2", letterSpacing:4, marginBottom:6 }}>
+              📡 LIVE STREAMING
+            </div>
+            <div style={{ fontFamily:"'Orbitron',monospace", fontWeight:900, fontSize:"clamp(16px,4vw,24px)", color:"#fff", marginBottom:4 }}>
+              🎮 오늘 12:30 디스코드 생중계!
+            </div>
+            <div style={{ fontSize:13, color:"#8899cc", marginBottom:8 }}>
+              대결을 실시간으로 함께 시청해요
+            </div>
+            <div style={{
+              display:"inline-block", background:"#5865f233", border:"1px solid #5865f266",
+              borderRadius:6, padding:"5px 14px",
+              fontFamily:"'Orbitron',monospace", fontSize:11, color:"#5865f2", letterSpacing:2,
+            }}>
+              discord.gg/kSQFKGnt →
+            </div>
+          </div>
+        </a>
           <div style={{ fontFamily:"'Orbitron',monospace", fontSize:9, letterSpacing:7, color:"#8844cc66", marginBottom:6 }}>PPD · KRAFTON STARCRAFT</div>
           <h1 style={{ fontFamily:"'Orbitron',monospace", fontSize:"clamp(20px,5vw,34px)", fontWeight:900, margin:0, letterSpacing:2, background:"linear-gradient(135deg,#c084fc,#fff,#00d4ff)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>BATTLE PREDICTION</h1>
           {closed && !result && (
@@ -614,8 +640,8 @@ export default function App() {
                   </div>
                 )}
 
-                {/* 프로필 수정 */}
-                {!result && (
+                {/* 프로필 수정 - 마감 전, 결과 발표 전에만 */}
+                {!result && !closed && (
                   <div style={{ marginTop:16 }}>
                     {!editingProfile ? (
                       <button onClick={()=>{ setEditingProfile(true); setEditNickname(session.nickname); setEditRealname(session.realname||""); setEditBet(session.bet||1); setEditSide(session.side); }} style={{ padding:"8px 18px", cursor:"pointer", borderRadius:6, background:"transparent", border:"1px solid #445566", color:"#667788", fontSize:12, fontFamily:"'Orbitron',monospace", letterSpacing:2 }}>
