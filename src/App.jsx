@@ -982,76 +982,74 @@ export default function App() {
             <div style={{ marginBottom:20 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                 <div style={{ fontSize:14, fontWeight:500, color }}>{title}</div>
-                <div style={{ fontSize:12, color:"var(--color-text-secondary)" }}>
+                <div style={{ fontSize:12, color:"#667788" }}>
                   {items.filter(v=>v.settled).length} / {items.length} 완료
                 </div>
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                {items.sort((a,b)=>(b.bet||1)-(a.bet||1)).map(v => (
-                  <div key={v.id} style={{
-                    display:"flex", alignItems:"center", gap:10,
-                    background: v.settled
-                      ? "var(--color-background-secondary)"
-                      : isWinner ? "var(--color-background-success)" : "var(--color-background-danger)",
-                    border: `1px solid ${v.settled
-                      ? "var(--color-border-tertiary)"
-                      : isWinner ? "var(--color-border-success)" : "var(--color-border-danger)"}`,
-                    borderRadius:8, padding:"10px 12px",
-                    transition:"all 0.2s",
-                  }}>
-                    {/* 체크 아이콘 */}
-                    <div style={{
-                      width:22, height:22, borderRadius:6, flexShrink:0,
-                      background: v.settled ? "var(--color-background-secondary)" : isWinner ? "var(--color-background-success)" : "var(--color-background-danger)",
-                      border: `2px solid ${v.settled ? "var(--color-border-secondary)" : isWinner ? "var(--color-border-success)" : "var(--color-border-danger)"}`,
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      fontSize:13, color: isWinner ? "var(--color-text-success)" : "var(--color-text-danger)",
+                {items.sort((a,b)=>(b.bet||1)-(a.bet||1)).map(v => {
+                  const pendingBg     = isWinner ? "#0a2010" : "#200a0a";
+                  const pendingBorder = isWinner ? "#44ff8844" : "#ff444444";
+                  const pendingColor  = isWinner ? "#44ff88"  : "#ff5555";
+                  return (
+                    <div key={v.id} style={{
+                      display:"flex", alignItems:"center", gap:10,
+                      background: v.settled ? "#0a1020" : pendingBg,
+                      border: `1px solid ${v.settled ? "#ffffff11" : pendingBorder}`,
+                      borderRadius:8, padding:"10px 12px", transition:"all 0.2s",
                     }}>
-                      {v.settled ? "✓" : ""}
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:15, fontWeight:500,
-                        color: v.settled ? "var(--color-text-secondary)" : "var(--color-text-primary)",
-                        textDecoration: v.settled ? "line-through" : "none",
+                      {/* 체크 아이콘 */}
+                      <div style={{
+                        width:22, height:22, borderRadius:6, flexShrink:0,
+                        background: v.settled ? "#1a2a3a" : pendingBg,
+                        border: `2px solid ${v.settled ? "#334455" : pendingBorder}`,
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        fontSize:13, color: pendingColor,
                       }}>
-                        {v.nickname}
+                        {v.settled ? "✓" : ""}
                       </div>
-                      <div style={{ fontSize:12, color:"var(--color-text-secondary)", marginTop:2 }}>
-                        베팅 {v.bet||1}장
-                        {isWinner
-                          ? <span style={{ color: v.settled ? "var(--color-text-secondary)" : "var(--color-text-success)", marginLeft:6, fontWeight: v.settled ? 400 : 500 }}>+{v.net}장 수령</span>
-                          : <span style={{ color: v.settled ? "var(--color-text-secondary)" : "var(--color-text-danger)", marginLeft:6, fontWeight: v.settled ? 400 : 500 }}>{v.bet||1}장 제출</span>
-                        }
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:15, fontWeight:500,
+                          color: v.settled ? "#445566" : "#ccd8e8",
+                          textDecoration: v.settled ? "line-through" : "none",
+                        }}>
+                          {v.nickname}
+                        </div>
+                        <div style={{ fontSize:12, color:"#667788", marginTop:2 }}>
+                          베팅 {v.bet||1}장
+                          {isWinner
+                            ? <span style={{ color: v.settled ? "#445566" : "#44ff88", marginLeft:6, fontWeight: v.settled ? 400 : 600 }}>+{v.net}장 수령</span>
+                            : <span style={{ color: v.settled ? "#445566" : "#ff5555", marginLeft:6, fontWeight: v.settled ? 400 : 600 }}>{v.bet||1}장 제출</span>
+                          }
+                        </div>
                       </div>
+                      {/* 상태 배지 */}
+                      <div style={{
+                        fontSize:11, padding:"3px 8px", borderRadius:5, whiteSpace:"nowrap",
+                        background: v.settled ? "#0a1020" : "#1a1200",
+                        color:      v.settled ? "#445566" : "#ffcc44",
+                        border:     `1px solid ${v.settled ? "#1a2a3a" : "#ffcc4444"}`,
+                      }}>
+                        {v.settled ? "완료" : "대기중"}
+                      </div>
+                      {adminMode && (
+                        <button
+                          onClick={() => handleToggleSettled(v.id, v.settled)}
+                          disabled={settlingId === v.id}
+                          style={{
+                            padding:"5px 12px", cursor:"pointer", borderRadius:6, fontSize:11,
+                            fontFamily:"'Orbitron',monospace", letterSpacing:1, whiteSpace:"nowrap",
+                            background: v.settled ? "transparent" : "#0a2010",
+                            border: `1px solid ${v.settled ? "#334455" : "#44ff8866"}`,
+                            color:  v.settled ? "#445566" : "#44ff88",
+                          }}
+                        >
+                          {settlingId===v.id ? "..." : v.settled ? "↩ 취소" : "✓ 완료"}
+                        </button>
+                      )}
                     </div>
-                    {/* 상태 배지 */}
-                    <div style={{
-                      fontSize:11, padding:"3px 8px", borderRadius:5,
-                      background: v.settled ? "var(--color-background-secondary)" : "var(--color-background-warning)",
-                      color: v.settled ? "var(--color-text-secondary)" : "var(--color-text-warning)",
-                      border: `1px solid ${v.settled ? "var(--color-border-tertiary)" : "var(--color-border-warning)"}`,
-                      whiteSpace:"nowrap",
-                    }}>
-                      {v.settled ? "완료" : "대기중"}
-                    </div>
-                    {adminMode && (
-                      <button
-                        onClick={() => handleToggleSettled(v.id, v.settled)}
-                        disabled={settlingId === v.id}
-                        style={{
-                          padding:"5px 12px", cursor:"pointer", borderRadius:6, fontSize:11,
-                          fontFamily:"'Orbitron',monospace", letterSpacing:1,
-                          background: v.settled ? "var(--color-background-secondary)" : "var(--color-background-success)",
-                          border: `1px solid ${v.settled ? "var(--color-border-secondary)" : "var(--color-border-success)"}`,
-                          color: v.settled ? "var(--color-text-secondary)" : "var(--color-text-success)",
-                          whiteSpace:"nowrap",
-                        }}
-                      >
-                        {settlingId===v.id ? "..." : v.settled ? "↩ 취소" : "✓ 완료"}
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -1060,24 +1058,24 @@ export default function App() {
             <div className="fade-in">
               {/* 진행 요약 */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
-                <div style={{ background:"var(--color-background-success)", border:"1px solid var(--color-border-success)", borderRadius:10, padding:"12px 16px" }}>
-                  <div style={{ fontSize:12, color:"var(--color-text-success)", marginBottom:4 }}>🏆 지급 완료</div>
-                  <div style={{ fontSize:22, fontWeight:500, color:"var(--color-text-success)" }}>{winnersSettled} <span style={{ fontSize:14 }}>/ {winners.length}명</span></div>
-                  <div style={{ fontSize:12, color:"var(--color-text-success)", marginTop:2 }}>
+                <div style={{ background:"#0a2010", border:"1px solid #44ff8833", borderRadius:10, padding:"12px 16px" }}>
+                  <div style={{ fontSize:12, color:"#44ff88", marginBottom:4 }}>🏆 지급 완료</div>
+                  <div style={{ fontSize:22, fontWeight:500, color:"#44ff88" }}>{winnersSettled} <span style={{ fontSize:14 }}>/ {winners.length}명</span></div>
+                  <div style={{ fontSize:12, color:"#336644", marginTop:2 }}>
                     {winners.filter(v=>v.settled).reduce((s,v)=>s+v.net,0)}장 지급됨
                   </div>
                 </div>
-                <div style={{ background:"var(--color-background-danger)", border:"1px solid var(--color-border-danger)", borderRadius:10, padding:"12px 16px" }}>
-                  <div style={{ fontSize:12, color:"var(--color-text-danger)", marginBottom:4 }}>💀 제출 완료</div>
-                  <div style={{ fontSize:22, fontWeight:500, color:"var(--color-text-danger)" }}>{losersSettled} <span style={{ fontSize:14 }}>/ {losers.length}명</span></div>
-                  <div style={{ fontSize:12, color:"var(--color-text-danger)", marginTop:2 }}>
+                <div style={{ background:"#200a0a", border:"1px solid #ff444433", borderRadius:10, padding:"12px 16px" }}>
+                  <div style={{ fontSize:12, color:"#ff5555", marginBottom:4 }}>💀 제출 완료</div>
+                  <div style={{ fontSize:22, fontWeight:500, color:"#ff5555" }}>{losersSettled} <span style={{ fontSize:14 }}>/ {losers.length}명</span></div>
+                  <div style={{ fontSize:12, color:"#663333", marginTop:2 }}>
                     {losers.filter(v=>v.settled).reduce((s,v)=>s+(v.bet||1),0)}장 수거됨
                   </div>
                 </div>
               </div>
 
               {!adminMode && (
-                <div style={{ background:"var(--color-background-secondary)", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, color:"var(--color-text-secondary)" }}>
+                <div style={{ background:"#0a1020", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, color:"#556677", border:"1px solid #1a2a3a" }}>
                   관리자 로그인 시 제출완료/지급완료 토글 가능
                 </div>
               )}
