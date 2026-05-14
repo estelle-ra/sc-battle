@@ -105,6 +105,7 @@ export default function App() {
   const [editError, setEditError]           = useState("");
 
   const [tab, setTab]               = useState("predict");
+  const [settlingId, setSettlingId] = useState(null); // voteId being toggled
   const [adminPw, setAdminPw]       = useState("");
   const [adminMode, setAdminMode]   = useState(false);
   const [adminError, setAdminError] = useState("");
@@ -362,6 +363,19 @@ export default function App() {
     } catch {}
   }
 
+  async function handleToggleSettled(voteId, current) {
+    if (settlingId) return;
+    setSettlingId(voteId);
+    try {
+      const res = await api({ action:"setSettled", voteId:String(voteId), settled:String(!current), pw:ADMIN_PW });
+      if (res.ok) {
+        setAllVotes(v => v.map(x => String(x.id)===String(voteId) ? {...x, settled:!current} : x));
+        setAdminVotes(v => v.map(x => String(x.id)===String(voteId) ? {...x, settled:!current} : x));
+      }
+    } catch {}
+    setSettlingId(null);
+  }
+
   async function handleDeleteVote(voteId) {
     if (deleting) return;
     setDeleting(voteId);
@@ -405,6 +419,31 @@ export default function App() {
 
   // 티켓 수 기준 배당 계산
   const PLAYERS = mergePlayers(settings);
+
+  // 1안 배당 계산: 최소 베팅자 ceil 보장 후 나머지 반올림
+  function computeSettlement(votes, resultSide) {
+    if (!resultSide) return { winners: [], losers: [] };
+    const winners = votes.filter(v => v.side === resultSide);
+    const losers  = votes.filter(v => v.side !== resultSide);
+    const totalTickets = votes.reduce((s, v) => s + (v.bet || 1), 0);
+    const winnerTickets = winners.reduce((s, v) => s + (v.bet || 1), 0);
+    const rate = totalTickets / winnerTickets;
+    const minBet = winners.length > 0 ? Math.min(...winners.map(v => v.bet || 1)) : 1;
+    const guaranteedPayout = Math.ceil(minBet * rate);
+    const minBetters = winners.filter(v => (v.bet || 1) === minBet);
+    const allocated = minBetters.length * guaranteedPayout;
+    const remainingPool = totalTickets - allocated;
+    const remainingBets = winners.filter(v => (v.bet || 1) > minBet).reduce((s, v) => s + (v.bet || 1), 0);
+    const newRate = remainingBets > 0 ? remainingPool / remainingBets : 0;
+
+    const winnersCalc = winners.map(v => {
+      const bet = v.bet || 1;
+      const payout = bet === minBet ? guaranteedPayout : Math.round(bet * newRate);
+      return { ...v, payout, net: payout - bet };
+    });
+    const losersCalc = losers.map(v => ({ ...v, payout: 0, net: -(v.bet || 1) }));
+    return { winners: winnersCalc, losers: losersCalc };
+  }
   const ticketsA     = allVotes.filter(v=>v.side==="a").reduce((s,v)=>s+(v.bet||1),0);
   const ticketsB     = allVotes.filter(v=>v.side==="b").reduce((s,v)=>s+(v.bet||1),0);
   const totalTickets = ticketsA + ticketsB;
@@ -545,8 +584,9 @@ export default function App() {
           {[
             { key:"predict", label: screen==="done"?"✓ 예측완료": screen==="setPinPrompt"?"🔐 PIN 설정": screen==="login"?"🔑 로그인":"예측 참여" },
             { key:"board",   label:`현황 (${total})` },
+            { key:"settle",  label:"정산", show: !!result },
             { key:"admin",   label:"관리자" },
-          ].map(t => (
+          ].filter(t => t.show !== false).map(t => (
             <button key={t.key} className="tab-btn" onClick={()=>setTab(t.key)} style={{
               flex:1, padding:"9px 6px", cursor:"pointer", borderRadius:6,
               background:tab===t.key?"#0d1e35":"transparent",
@@ -931,6 +971,111 @@ export default function App() {
             )}
           </div>
         )}
+
+        {/* ── 정산 탭 ── */}
+        {tab==="settle" && result && (() => {
+          const { winners, losers } = computeSettlement(allVotes, result);
+          const winnersSettled = winners.filter(v => v.settled).length;
+          const losersSettled  = losers.filter(v => v.settled).length;
+
+          const Section = ({ title, color, bg, border, items, isWinner }) => (
+            <div style={{ marginBottom:20 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                <div style={{ fontSize:14, fontWeight:500, color }}>{title}</div>
+                <div style={{ fontSize:12, color:"var(--color-text-secondary)" }}>
+                  {items.filter(v=>v.settled).length} / {items.length} 완료
+                </div>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+                {items.sort((a,b)=>(b.bet||1)-(a.bet||1)).map(v => (
+                  <div key={v.id} style={{
+                    display:"flex", alignItems:"center", gap:10,
+                    background: v.settled ? "var(--color-background-success)" : bg,
+                    border: `1px solid ${v.settled ? "var(--color-border-success)" : border}`,
+                    borderRadius:8, padding:"10px 12px",
+                    opacity: v.settled ? 0.75 : 1,
+                    transition:"all 0.2s",
+                  }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:15, fontWeight:500, display:"flex", alignItems:"center", gap:6 }}>
+                        {v.nickname}
+                        {v.settled && <span style={{ fontSize:11, color:"var(--color-text-success)" }}>✓ 완료</span>}
+                      </div>
+                      <div style={{ fontSize:12, color:"var(--color-text-secondary)", marginTop:2 }}>
+                        베팅 {v.bet||1}장
+                        {isWinner
+                          ? <span style={{ color, marginLeft:6 }}>→ 총 배당 {v.payout}장 · <strong>+{v.net}장 수령</strong></span>
+                          : <span style={{ color:"var(--color-text-danger)", marginLeft:6 }}>→ <strong>{v.bet||1}장 제출</strong></span>
+                        }
+                      </div>
+                    </div>
+                    {adminMode && (
+                      <button
+                        onClick={() => handleToggleSettled(v.id, v.settled)}
+                        disabled={settlingId === v.id}
+                        style={{
+                          padding:"5px 12px", cursor:"pointer", borderRadius:6, fontSize:11,
+                          fontFamily:"'Orbitron',monospace", letterSpacing:1,
+                          background: v.settled ? "var(--color-background-danger)" : "var(--color-background-success)",
+                          border: `1px solid ${v.settled ? "var(--color-border-danger)" : "var(--color-border-success)"}`,
+                          color: v.settled ? "var(--color-text-danger)" : "var(--color-text-success)",
+                          whiteSpace:"nowrap",
+                        }}
+                      >
+                        {settlingId===v.id ? "..." : v.settled ? "취소" : isWinner ? "지급완료" : "제출완료"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+
+          return (
+            <div className="fade-in">
+              {/* 진행 요약 */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+                <div style={{ background:"var(--color-background-success)", border:"1px solid var(--color-border-success)", borderRadius:10, padding:"12px 16px" }}>
+                  <div style={{ fontSize:12, color:"var(--color-text-success)", marginBottom:4 }}>🏆 지급 완료</div>
+                  <div style={{ fontSize:22, fontWeight:500, color:"var(--color-text-success)" }}>{winnersSettled} <span style={{ fontSize:14 }}>/ {winners.length}명</span></div>
+                  <div style={{ fontSize:12, color:"var(--color-text-success)", marginTop:2 }}>
+                    {winners.filter(v=>v.settled).reduce((s,v)=>s+v.net,0)}장 지급됨
+                  </div>
+                </div>
+                <div style={{ background:"var(--color-background-danger)", border:"1px solid var(--color-border-danger)", borderRadius:10, padding:"12px 16px" }}>
+                  <div style={{ fontSize:12, color:"var(--color-text-danger)", marginBottom:4 }}>💀 제출 완료</div>
+                  <div style={{ fontSize:22, fontWeight:500, color:"var(--color-text-danger)" }}>{losersSettled} <span style={{ fontSize:14 }}>/ {losers.length}명</span></div>
+                  <div style={{ fontSize:12, color:"var(--color-text-danger)", marginTop:2 }}>
+                    {losers.filter(v=>v.settled).reduce((s,v)=>s+(v.bet||1),0)}장 수거됨
+                  </div>
+                </div>
+              </div>
+
+              {!adminMode && (
+                <div style={{ background:"var(--color-background-secondary)", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, color:"var(--color-text-secondary)" }}>
+                  관리자 로그인 시 제출완료/지급완료 토글 가능
+                </div>
+              )}
+
+              <Section
+                title={`🏆 ${PLAYERS[result].name} 선택 — 수령 목록`}
+                color="var(--color-text-success)"
+                bg="var(--color-background-primary)"
+                border="var(--color-border-success)"
+                items={winners}
+                isWinner={true}
+              />
+              <Section
+                title={`💀 ${PLAYERS[result==="a"?"b":"a"].name} 선택 — 제출 목록`}
+                color="var(--color-text-danger)"
+                bg="var(--color-background-primary)"
+                border="var(--color-border-danger)"
+                items={losers}
+                isWinner={false}
+              />
+            </div>
+          );
+        })()}
 
         {/* ── 관리자 탭 ── */}
         {tab==="admin" && (
